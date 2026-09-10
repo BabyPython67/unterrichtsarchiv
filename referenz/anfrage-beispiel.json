@@ -1,0 +1,23 @@
+{
+  "bundleVersion": "a6ef588fd2",
+  "requests": [
+    {
+      "moduleName": "classbook",
+      "endpointName": "get-topics",
+      "parameters": {
+        "student": {
+          "id": 0
+        }
+      }
+    },
+    {
+      "moduleName": "classbook",
+      "endpointName": "get-homework",
+      "parameters": {
+        "student": {
+          "id": 0
+        }
+      }
+    }
+  ]
+}

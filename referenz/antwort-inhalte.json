@@ -1,0 +1,159 @@
+{
+  "results": [
+    {
+      "status": 200,
+      "data": [
+        {
+          "date": "2026-09-03",
+          "subject": "Mathematik",
+          "topic": "Wiederholung: Ableitungsregeln/Übungen - Analysis ohne CAS"
+        },
+        {
+          "date": "2026-09-04",
+          "subject": "Mathematik",
+          "topic": "Zusammengesetzte Funktionen ohne CAS untersuchen"
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "Mathematik",
+          "topic": "Zusammengesetzte Funktionen untersuchen"
+        },
+        {
+          "date": "2026-09-10",
+          "subject": "Mathematik",
+          "topic": "Anwendungsaufgaben"
+        },
+        {
+          "date": "2026-09-04",
+          "subject": "Lateinisch, Beginn in Jahrgangsklasse 7",
+          "topic": "Biografie Senecas, Ad. Luc. ep. 1 Satz 1"
+        },
+        {
+          "date": "2026-09-08",
+          "subject": "Lateinisch, Beginn in Jahrgangsklasse 7",
+          "topic": "Seneca ep.1 - Z. 17\nWdh.:Vok., Imp.,Kon. Präs.,  Fut. I + II, tempus (n),   PPA"
+        },
+        {
+          "date": "2026-09-02",
+          "subject": "PsG1",
+          "topic": "Selbstständig. Arbeit\nFL fehlend"
+        },
+        {
+          "date": "2026-09-08",
+          "subject": "PsG1",
+          "topic": "Wiederholung Kognitivismus und Theorien"
+        },
+        {
+          "date": "2026-09-09",
+          "subject": "PsG1",
+          "topic": "Erlernte Hilflosigkeit"
+        },
+        {
+          "date": "2026-09-02",
+          "subject": "Geschichte",
+          "topic": "Organisatorisches, Bilderquiz 1945-89, Karikatur zu Mai 45"
+        },
+        {
+          "date": "2026-09-09",
+          "subject": "Geschichte",
+          "topic": "Stunde \"Null\", Potsdamer Konferenz, zerstörtes Köln, Gründung NRW"
+        },
+        {
+          "date": "2026-09-03",
+          "subject": "Englisch",
+          "topic": "Merkblatt SoMi-Noten, Grundlagen der Leistungsbewertung, Klausurtermine\n\nThema 1. Hj.: Vision of the future\nIntro: Describing  8 photos, PA: Your ideal world of the future (the rest is homework)"
+        },
+        {
+          "date": "2026-09-04",
+          "subject": "Englisch",
+          "topic": "Hinweis zu Klausuren, Vorabitur, Abitur; \nSomi-Noten: Kriterien\nVision of the future: positive/ negative aspects of your ideal world: discussion, vocab work"
+        },
+        {
+          "date": "2026-09-10",
+          "subject": "Englisch",
+          "topic": "Check vocab text Visions of the future,\nText \"Europe is the world's fastest-growing country\""
+        },
+        {
+          "date": "2026-09-02",
+          "subject": "Deutsch",
+          "topic": "Distanzaufgaben"
+        },
+        {
+          "date": "2026-09-09",
+          "subject": "Deutsch",
+          "topic": "Orga, Leistungserwartungen, Recap Theaterbesuch & Reflexion, Einstieg Woyzeck"
+        },
+        {
+          "date": "2026-09-03",
+          "subject": "Kunst",
+          "topic": "Organisatorisches \nWarm Up\nReaktivierung Ausstellung William kentridge"
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "Kunst",
+          "topic": "Stop Motion Video zum Thema Kaffee und Zeit in Gruppen entwerfen"
+        },
+        {
+          "date": "2026-09-02",
+          "subject": "Physik",
+          "topic": "Ordinariatsstunden Klassenleitung"
+        },
+        {
+          "date": "2026-09-08",
+          "subject": "Physik",
+          "topic": "Wdh Polarisation + Doppelspalt"
+        },
+        {
+          "date": "2026-09-09",
+          "subject": "Physik",
+          "topic": "Fotoeffekt"
+        },
+        {
+          "date": "2026-09-03",
+          "subject": "Sport",
+          "topic": "Agressionen + Frust im Sport + Orga Kursfahrt"
+        },
+        {
+          "date": "2026-09-04",
+          "subject": "Sport",
+          "topic": "Belehrung Somi Praxis, Analyse Videos Speerwurf"
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "Sport",
+          "topic": "Spielfertigkeitsübung, Läufer mit zugeteilten Rollen"
+        },
+        {
+          "date": "2026-09-10",
+          "subject": "Sport",
+          "topic": "Aggressions - Frusttrations -Theorie"
+        },
+        {
+          "date": "2026-09-03",
+          "subject": "SwZ6",
+          "topic": "Vorgaben, Anforderungen, Quiz zum politischen System der BRD"
+        },
+        {
+          "date": "2026-09-10",
+          "subject": "SwZ6",
+          "topic": "Wahlen in der BRD (Grundsätze im GG)"
+        }
+      ]
+    }
+  ],
+  "systemStatusMessages": [
+    {
+      "id": 89,
+      "text": "Der Schulmanager ist aktuell teilweise nicht erreichbar.\nWeitere Informationen finden Sie unter www.schulmanager-status.de",
+      "level": "warning",
+      "visibilities": [
+        "everywhere"
+      ],
+      "relevantModules": [],
+      "roles": [
+        "user"
+      ],
+      "platforms": []
+    }
+  ]
+}

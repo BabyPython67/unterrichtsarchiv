@@ -1,0 +1,12 @@
+{
+  "name": "unterrichtsarchiv",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Unterrichtsinhalte und Hausaufgaben aus Schulmanager Online dauerhaft im Browser sammeln und nach Kursen durchsuchen.",
+  "scripts": {
+    "test": "node --test",
+    "build": "node tools/build.mjs",
+    "serve": "node tools/serve.mjs"
+  }
+}

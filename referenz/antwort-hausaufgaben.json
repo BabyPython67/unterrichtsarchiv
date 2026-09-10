@@ -1,0 +1,44 @@
+{
+  "results": [
+    {
+      "status": 200,
+      "data": [
+        {
+          "date": "2026-09-09",
+          "subject": "PsG1",
+          "homework": "Text lesen: sozial-kognitive Lerntheorien (Moodle)"
+        },
+        {
+          "date": "2026-09-03",
+          "subject": "Englisch",
+          "homework": "Ex. 2c)"
+        },
+        {
+          "date": "2026-09-04",
+          "subject": "Englisch",
+          "homework": "Überblickstext Visions of the future lesen, Vok. nachschlagen"
+        },
+        {
+          "date": "2026-09-10",
+          "subject": "Englisch",
+          "homework": "Summary \"Europe is...\""
+        }
+      ]
+    }
+  ],
+  "systemStatusMessages": [
+    {
+      "id": 89,
+      "text": "Der Schulmanager ist aktuell teilweise nicht erreichbar.\nWeitere Informationen finden Sie unter www.schulmanager-status.de",
+      "level": "warning",
+      "visibilities": [
+        "everywhere"
+      ],
+      "relevantModules": [],
+      "roles": [
+        "user"
+      ],
+      "platforms": []
+    }
+  ]
+}
