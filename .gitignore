@@ -3,3 +3,4 @@
 *.log
 .DS_Store
 Thumbs.db
+tools/fake-schulmanager/bookmarklet-test.js

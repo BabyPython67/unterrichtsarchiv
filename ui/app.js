@@ -6,6 +6,7 @@ import { lesen, schreiben, loeschen, defektSichern, exportText, exportDateiname,
 import { importieren } from "../kern/importieren.js";
 import { filtern, gruppieren, kurseZaehlen, kurseSortiert, anzeigename, zerlegen, wochentag, datumLesbar } from "../kern/filtern.js";
 import { DateiQuelle } from "../quellen/dateiQuelle.js";
+import { EmpfangsQuelle } from "../quellen/empfangsQuelle.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -341,6 +342,7 @@ function archivLoeschen() {
 // ---------------------------------------------------------------------------
 
 const dateiQuelle = new DateiQuelle($("datei"));
+const empfangsQuelle = new EmpfangsQuelle(window);
 
 function verdrahten() {
   $("knopf-import").addEventListener("click", () => dateiQuelle.oeffnen());
@@ -359,8 +361,16 @@ function verdrahten() {
     render();
   });
 
-  const callbacks = { onDaten: datenVerarbeiten, onFehler: (text) => melden("fehler", text) };
-  if (dateiQuelle.verfuegbar()) dateiQuelle.starten(callbacks);
+  const callbacks = {
+    onDaten: datenVerarbeiten,
+    onFehler: (text) => melden("fehler", text),
+    onWarten: (laeuft) => melden(laeuft ? "ok" : "warn", laeuft
+      ? "Warte auf die Daten aus dem Schulmanager-Tab …"
+      : "In 20 Sekunden ist nichts angekommen. Im Schulmanager-Tab steht oben rechts, was passiert ist. Falls dort eine Datei heruntergeladen wurde: hier auf „Importieren“ tippen."),
+  };
+  for (const quelle of [dateiQuelle, empfangsQuelle]) {
+    if (quelle.verfuegbar()) quelle.starten(callbacks);
+  }
 }
 
 laden();

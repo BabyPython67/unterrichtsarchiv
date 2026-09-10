@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Unterrichtsarchiv – Lesezeichen anlegen</title>
+  <link rel="stylesheet" href="./ui/stil.css">
+  <style>
+    .seite { padding: 8px 16px 48px; max-width: 720px; }
+    .seite h2 { font-size: 18px; margin: 28px 0 8px; }
+    .seite ol { padding-left: 22px; }
+    .seite li { margin: 6px 0; }
+    .ziehen {
+      display: inline-block;
+      padding: 14px 20px;
+      margin: 8px 0;
+      background: var(--akzent);
+      color: var(--akzent-text);
+      border-radius: var(--radius);
+      font-weight: 600;
+      text-decoration: none;
+      cursor: grab;
+    }
+    textarea {
+      width: 100%;
+      min-height: 90px;
+      font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace;
+      color: var(--tinte);
+      background: var(--karte);
+      border: 1px solid var(--linie);
+      border-radius: var(--radius);
+      padding: 8px;
+    }
+    .hinweis { color: var(--leise); font-size: 14px; }
+    .kasten { background: var(--karte); border: 1px solid var(--linie); border-radius: var(--radius); padding: 14px 16px; margin: 12px 0; }
+  </style>
+</head>
+<body>
+  <header class="kopf">
+    <div class="kopf-zeile">
+      <h1>Lesezeichen anlegen</h1>
+      <div class="kopf-knoepfe"><a href="./">Zum Viewer</a></div>
+    </div>
+    <p class="stand">Einmalig einrichten, danach reicht ein Tipp im Schulmanager.</p>
+  </header>
+
+  <div class="seite">
+    <div id="meldung" class="meldung" hidden></div>
+
+    <p>Das Lesezeichen holt deine Unterrichtsinhalte und Hausaufgaben aus dem Schulmanager-Tab, in dem du
+      schon eingeloggt bist, und schickt sie an den Viewer. Es fragt nie nach einem Passwort und speichert
+      nichts auf einem Server.</p>
+
+    <h2>Am Computer</h2>
+    <div class="kasten">
+      <p>Diesen Knopf mit der Maus in die Lesezeichenleiste ziehen (nicht anklicken):</p>
+      <a class="ziehen" id="lesezeichen" href="#">Unterrichtsarchiv holen</a>
+      <p class="hinweis">Lesezeichenleiste einblenden: Chrome/Edge <kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>B</kbd>, Firefox über „Ansicht → Symbolleisten".
+        Alternativ: irgendeine Seite als Lesezeichen speichern, dann das Lesezeichen bearbeiten und als Adresse den Text aus dem Feld unten einfügen.</p>
+    </div>
+
+    <h2>iPhone und iPad (Safari)</h2>
+    <div class="kasten">
+      <ol>
+        <li>Unten auf „Kopieren" tippen, damit die Lesezeichen-Adresse in der Zwischenablage liegt.</li>
+        <li>Diese Seite über „Teilen" → „Lesezeichen hinzufügen" sichern. Name z. B. <b>Unterrichtsarchiv holen</b>.</li>
+        <li>Lesezeichen-Übersicht öffnen → „Bearbeiten" → das neue Lesezeichen antippen → im Feld „Adresse" alles löschen und den kopierten Text einfügen → „Fertig".</li>
+        <li>Benutzen: Im Schulmanager eingeloggt in die Adressleiste tippen, „Unterrichtsarchiv" eingeben und das Lesezeichen aus den Vorschlägen wählen.</li>
+      </ol>
+    </div>
+
+    <h2>Android (Chrome)</h2>
+    <div class="kasten">
+      <ol>
+        <li>„Kopieren" tippen.</li>
+        <li>Diese Seite über das Menü ☆ als Lesezeichen speichern, dann Lesezeichen → ⋮ → „Bearbeiten" → Adresse durch den kopierten Text ersetzen.</li>
+        <li>Benutzen: Im Schulmanager eingeloggt den Lesezeichennamen in die Adressleiste tippen und das Lesezeichen wählen.</li>
+      </ol>
+    </div>
+
+    <h2>Adresse des Lesezeichens</h2>
+    <div class="knopfreihe"><button type="button" id="kopieren">Kopieren</button></div>
+    <textarea id="url" readonly aria-label="Lesezeichen-Adresse"></textarea>
+    <p class="hinweis">Viewer-Adresse, die fest im Lesezeichen steckt: <span id="viewer-url"></span></p>
+
+    <h2>Was beim Antippen passiert</h2>
+    <div class="kasten">
+      <ol>
+        <li>Der Viewer öffnet sich in einem neuen Tab.</li>
+        <li>Das Lesezeichen holt einmal Inhalte und Hausaufgaben (kein Dauerabruf).</li>
+        <li>Der Viewer übernimmt sie: neue Einträge kommen dazu, geänderte werden aktualisiert, nichts wird gelöscht.</li>
+        <li>Wird das neue Fenster blockiert, lädt das Lesezeichen stattdessen eine Datei herunter, die du im Viewer über „Importieren" einliest.</li>
+      </ol>
+      <p class="hinweis">Im Schulmanager-Tab erscheint oben rechts eine kleine Statusbox. Falls etwas schiefgeht, steht dort der Grund; mit „Meldung kopieren" lässt er sich weitergeben.</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { BOOKMARKLET_URL, VIEWER_URL } from "./bookmarklet/bookmarklet.js";
+    const a = document.getElementById("lesezeichen");
+    a.href = BOOKMARKLET_URL;
+    document.getElementById("url").value = BOOKMARKLET_URL;
+    document.getElementById("viewer-url").textContent = VIEWER_URL;
+    const meldung = document.getElementById("meldung");
+    const zeigen = (art, text) => { meldung.textContent = text; meldung.className = "meldung " + art; meldung.hidden = false; };
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      zeigen("warn", "Nicht anklicken, sondern in die Lesezeichenleiste ziehen. Auf dem Handy die Adresse unten kopieren.");
+    });
+    document.getElementById("kopieren").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(BOOKMARKLET_URL);
+        zeigen("ok", "Kopiert. Jetzt ein Lesezeichen anlegen und dessen Adresse durch den kopierten Text ersetzen.");
+      } catch (e) {
+        const t = document.getElementById("url");
+        t.focus(); t.select();
+        zeigen("warn", "Automatisches Kopieren ging nicht. Der Text ist markiert: jetzt manuell kopieren.");
+      }
+    });
+  </script>
+</body>
+</html>

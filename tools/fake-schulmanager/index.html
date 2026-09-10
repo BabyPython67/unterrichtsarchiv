@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Schulmanager-Attrappe (nur lokal)</title>
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 20px; background: #eef2f7; color: #123; }
+    h1 { font-size: 20px; }
+    button { font: inherit; padding: 10px 16px; }
+    pre { background: #fff; border: 1px solid #ccd; padding: 10px; white-space: pre-wrap; word-break: break-word; }
+    label { display: block; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Schulmanager-Attrappe</h1>
+  <p>Läuft auf <code>http://localhost:8081</code>. Stellt <code>/api/login-status</code> und <code>/api/calls</code>
+    nach (Fixtures aus dem Viewer-Server auf :8080) und führt den Testbuild des Bookmarklets aus.
+    Vorher: <code>node tools/build.mjs --viewer http://localhost:8080/ --origin http://localhost:8081 --out tools/fake-schulmanager/bookmarklet-test.js</code></p>
+
+  <label><input type="checkbox" id="popup-blocken"> window.open blockieren (Download-Fallback testen)</label>
+  <label><input type="checkbox" id="topics-kaputt"> get-topics mit Status 404 beantworten (Warnung testen)</label>
+  <label><input type="checkbox" id="rate-limit"> HTTP 429 liefern</label>
+  <label><input type="checkbox" id="zwei-schueler"> zwei zugeordnete Schüler (Auswahl-Prompt testen)</label>
+  <button type="button" id="start">Bookmarklet ausführen</button>
+
+  <h2>Protokoll der Attrappe</h2>
+  <pre id="protokoll"></pre>
+
+  <script>
+    // Inline-Skript mit einer bundleVersion, damit die Erkennung "Seite" greift.
+    window.__attrappe = { bundleVersion: "deadbeef01" };
+    const protokoll = (t) => { document.getElementById("protokoll").textContent += t + "\n"; };
+    localStorage.setItem("jwt", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE5MDAwMDAwMDB9.abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMN");
+
+    const echt = window.fetch.bind(window);
+    const antwort = (obj, status = 200, headers = {}) =>
+      new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...headers } });
+
+    window.fetch = async (url, init = {}) => {
+      const u = String(url);
+      const bearer = init.headers && init.headers.Authorization ? "mit Bearer" : "ohne Bearer";
+      if (u.includes("/api/login-status")) {
+        protokoll(`GET ${u} (${bearer})`);
+        const student = { id: 424242, firstname: "Test", lastname: "Person" };
+        const user = { id: 1, associatedStudent: student };
+        if (document.getElementById("zwei-schueler").checked) {
+          user.associatedStudents = [student, { id: 434343, firstname: "Zweites", lastname: "Kind" }];
+        }
+        return antwort({ isAuthenticated: true, user });
+      }
+      if (u.includes("/api/calls")) {
+        protokoll(`POST ${u} (${bearer})\nBody: ${init.body}`);
+        if (document.getElementById("rate-limit").checked) return antwort({ error: "rate limit" }, 429);
+        const inhalte = await (await echt("http://localhost:8080/referenz/antwort-inhalte.json")).json();
+        const ha = await (await echt("http://localhost:8080/referenz/antwort-hausaufgaben.json")).json();
+        const topics = document.getElementById("topics-kaputt").checked ? { status: 404, data: null } : inhalte.results[0];
+        return antwort({ results: [topics, ha.results[0]], systemStatusMessages: [] }, 200, { "X-Ratelimit-Limit": "800" });
+      }
+      return echt(url, init);
+    };
+
+    window.addEventListener("message", (ev) => protokoll(`message von ${ev.origin}: ${JSON.stringify(ev.data).slice(0, 120)}`));
+  </script>
+
+  <script type="module">
+    import { BOOKMARKLET_URL } from "./bookmarklet-test.js";
+    document.getElementById("start").addEventListener("click", () => {
+      document.getElementById("protokoll").textContent = "";
+      if (document.getElementById("popup-blocken").checked) {
+        const original = window.open;
+        window.open = () => null;
+        setTimeout(() => { window.open = original; }, 0);
+      }
+      const code = decodeURIComponent(BOOKMARKLET_URL.slice("javascript:".length));
+      new Function(code)();
+    });
+  </script>
+</body>
+</html>
