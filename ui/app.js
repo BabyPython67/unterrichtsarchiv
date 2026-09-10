@@ -377,3 +377,10 @@ laden();
 verdrahten();
 render();
 if (zustand.speicherFehler) melden("fehler", zustand.speicherFehler);
+
+// PWA-Hülle: nur die App-Shell wird gecacht (siehe sw.js). Lokal beim Entwickeln nicht
+// registrieren, sonst liefert der Cache alte Dateien; mit ?sw=1 lässt es sich erzwingen.
+const lokal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+if ("serviceWorker" in navigator && (!lokal || new URLSearchParams(location.search).has("sw"))) {
+  navigator.serviceWorker.register("./sw.js").catch(() => { /* ohne SW läuft alles trotzdem */ });
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Unterrichtsarchiv",
+  "short_name": "Unterricht",
+  "description": "Unterrichtsinhalte und Hausaufgaben aus Schulmanager Online, dauerhaft gesammelt und nach Kursen durchsuchbar.",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f2f4f6",
+  "theme_color": "#1f4e79",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
