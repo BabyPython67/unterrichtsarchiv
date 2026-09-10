@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
-import { findeAssociatedStudents, findeBundleVersion, siehtNachJwtAus, findeJwt, dateinameFuerDatum, pruefeAntwortStatus, zaehleDatensaetze } from "../bookmarklet/helfer.js";
+import { findeAssociatedStudents, findeBundleVersion, siehtNachJwtAus, findeJwt, dateinameFuerDatum, pruefeAntwortStatus, zaehleDatensaetze, jwtNutzlast, schuelerAusSpeicher, apiPfade } from "../bookmarklet/helfer.js";
 import { bookmarkletBauen, bookmarkletModul, codeVerdichten, STANDARD, WURZEL } from "../tools/build.mjs";
 import { originErlaubt, bereitZiele } from "../quellen/empfangsQuelle.js";
 import { kombiniert } from "./hilfen.js";
@@ -84,4 +84,37 @@ test("empfangsQuelle: Origin-Prüfung streng, lokal nur auf localhost gelockert"
   assert.deepEqual(bereitZiele(prod), ["https://login.schulmanager-online.de"]);
   assert.equal(bereitZiele(lokal).length, 3);
   assert.equal(WURZEL.length > 0, true);
+});
+
+function jwtBauen(nutzlast) {
+  const b64url = (s) => Buffer.from(s, "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return b64url('{"alg":"HS256","typ":"JWT"}') + "." + b64url(JSON.stringify(nutzlast)) + "." + "x".repeat(43);
+}
+
+test("jwtNutzlast: base64url mit Umlauten, ohne Padding; Müll ergibt null", () => {
+  const jwt = jwtBauen({ user: { id: 7, associatedStudent: { id: 4242424, firstname: "Jörg", lastname: "Ü" } }, exp: 1 });
+  const n = jwtNutzlast(jwt);
+  assert.equal(n.user.associatedStudent.firstname, "Jörg");
+  assert.equal(jwtNutzlast("a.b.c"), null);
+  assert.equal(jwtNutzlast("eyJhbGciOiJIUzI1NiJ9.!!!!!!!!!!!!!!!!!!!!.abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH"), null);
+  assert.equal(jwtNutzlast(null), null);
+});
+
+test("schuelerAusSpeicher: aus JWT roh, aus JSON-Storage, in JSON verpacktem JWT; sonst leer", () => {
+  const jwt = jwtBauen({ user: { associatedStudent: { id: 4242424, firstname: "Max" } } });
+  assert.deepEqual(schuelerAusSpeicher([["jwt", jwt]]).map((s) => s.id), [4242424]);
+  assert.deepEqual(schuelerAusSpeicher([["user", JSON.stringify({ associatedStudent: { id: 42 } })]]).map((s) => s.id), [42]);
+  assert.deepEqual(schuelerAusSpeicher([["state", JSON.stringify({ auth: { token: jwt } })]]).map((s) => s.id), [4242424]);
+  assert.deepEqual(schuelerAusSpeicher([["x", "1"], ["y", "{kaputt"]]), []);
+  assert.deepEqual(schuelerAusSpeicher([]), []);
+});
+
+test("apiPfade: nur eigene Origin, nur /api/, ohne Query, Zahlen maskiert, sortiert und eindeutig", () => {
+  const o = "https://login.schulmanager-online.de";
+  const namen = [
+    o + "/api/calls", o + "/api/calls?x=1", o + "/api/user/4242424/status", o + "/main.js",
+    "https://cdn.example/api/calls", o + "/api/calls", 5, o + "/api/login-status",
+  ];
+  assert.deepEqual(apiPfade(namen, o), ["/api/calls", "/api/login-status", "/api/user/#/status"]);
+  assert.deepEqual(apiPfade([], o), []);
 });

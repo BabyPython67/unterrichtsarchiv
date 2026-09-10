@@ -22,6 +22,7 @@
   <label><input type="checkbox" id="topics-kaputt"> get-topics mit Status 404 beantworten (Warnung testen)</label>
   <label><input type="checkbox" id="rate-limit"> HTTP 429 liefern</label>
   <label><input type="checkbox" id="zwei-schueler"> zwei zugeordnete Schüler (Auswahl-Prompt testen)</label>
+  <label><input type="checkbox" id="status-kaputt"> login-status mit 404 beantworten (Diagnose testen)</label>
   <button type="button" id="start">Bookmarklet ausführen</button>
 
   <h2>Protokoll der Attrappe</h2>
@@ -42,6 +43,7 @@
       const bearer = init.headers && init.headers.Authorization ? "mit Bearer" : "ohne Bearer";
       if (u.includes("/api/login-status")) {
         protokoll(`GET ${u} (${bearer})`);
+        if (document.getElementById("status-kaputt").checked) return antwort({ error: "not found" }, 404);
         const student = { id: 424242, firstname: "Test", lastname: "Person" };
         const user = { id: 1, associatedStudent: student };
         if (document.getElementById("zwei-schueler").checked) {

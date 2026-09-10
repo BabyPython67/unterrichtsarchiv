@@ -88,9 +88,12 @@ Altbestand stehen.
 
 - Der Endpoint-Name `get-topics` für Unterrichtsinhalte ist vermutet; `get-homework` ist
   belegt. Antwortet eine Teilanfrage nicht mit 200, nennt die Statusbox den Namen.
-- `GET /api/login-status` und die Form der `associatedStudent`-Antwort sind nicht
-  mitgeschnitten. Das Lesezeichen sucht rekursiv; ohne Treffer bricht es mit Meldung ab,
-  bei mehreren Schülern fragt es nach.
+- Die Schüler-Zuordnung (`associatedStudent`) liest das Lesezeichen zuerst aus den
+  Sitzungsdaten im Browser (Storage, Token-Nutzlast), ohne eigene Anfrage. Erst wenn dort
+  nichts steht, fragt es `GET /api/login-status`; dieser Pfad ist unbestätigt (erster Test:
+  404). Schlägt beides fehl, zeigt die Statusbox eine Diagnose: Storage-Schlüsselnamen, ob
+  ein Token da ist und welche API-Pfade die Seite selbst aufruft. Bei mehreren Schülern
+  fragt es nach.
 - Ob die Sitzung per Cookie oder per Token im Storage läuft, ist unbekannt; beides wird
   mitgeschickt. 401 oder 403 → „Sitzung nicht erkannt“.
 - Blockt Schulmanager fremde Fenster (Cross-Origin-Opener-Policy), kommt kein „bereit“

@@ -119,17 +119,36 @@
     log("Datei " + a.download + " heruntergeladen. Im Viewer auf „Importieren“ tippen und diese Datei wählen: " + VIEWER_URL);
   }
 
+  // Diagnose ohne Nutzerdaten: Schlüsselnamen, ob ein Token da ist, welche API-Pfade die
+  // Seite selbst schon benutzt hat. Damit lässt sich der richtige Pfad nachschlagen statt raten.
+  function diagnose() {
+    const eintraege = storageEintraege();
+    log("Diagnose · Storage-Schlüssel: " + (eintraege.map((e) => e[0]).slice(0, 30).join(", ") || "keine"));
+    log("Diagnose · Token im Storage: " + (findeJwt(eintraege) ? "ja" : "nein"));
+    let namen = [];
+    try { namen = performance.getEntriesByType("resource").map((r) => r.name); } catch (e) { /* kein Timing */ }
+    log("Diagnose · API-Pfade der Seite: " + (apiPfade(namen, location.origin).join(", ") || "keine gesehen"));
+    kopieren.hidden = false;
+  }
+
   ;(async () => {
-    const statusRes = await fetch("/api/login-status", { credentials: "include", headers: kopf() });
-    if (!statusRes.ok) {
-      fehler("login-status antwortet mit HTTP " + statusRes.status + " (Pfad /api/login-status). Bist du eingeloggt?");
-      return;
-    }
-    const status = await statusRes.json();
-    const schueler = findeAssociatedStudents(status);
+    let schueler = schuelerAusSpeicher(storageEintraege());
+    let herkunft = "Sitzungsdaten im Browser";
     if (!schueler.length) {
-      fehler("Keine Schüler-Zuordnung (associatedStudent) in login-status gefunden. Felder der Antwort: " + Object.keys(status || {}).join(", "));
-      return;
+      const statusRes = await fetch("/api/login-status", { credentials: "include", headers: kopf() });
+      if (!statusRes.ok) {
+        diagnose();
+        fehler("login-status antwortet mit HTTP " + statusRes.status + " (Pfad /api/login-status). Bist du eingeloggt?");
+        return;
+      }
+      const status = await statusRes.json();
+      schueler = findeAssociatedStudents(status);
+      herkunft = "login-status";
+      if (!schueler.length) {
+        diagnose();
+        fehler("Keine Schüler-Zuordnung (associatedStudent) in login-status gefunden. Felder der Antwort: " + Object.keys(status || {}).join(", "));
+        return;
+      }
     }
     let gewaehlt = schueler[0];
     if (schueler.length > 1) {
@@ -138,15 +157,16 @@
       if (!(n >= 1 && n <= schueler.length)) { fehler("Keine gültige Auswahl, abgebrochen."); return; }
       gewaehlt = schueler[n - 1];
     }
-    log("Schüler-Zuordnung erkannt.");
+    log("Schüler-Zuordnung erkannt (Quelle: " + herkunft + ").");
     const bundle = await bundleVersionErmitteln();
     log("bundleVersion " + bundle.v + " (" + bundle.quelle + ").");
     const body = { bundleVersion: bundle.v, requests: ENDPOINTS.map((e) => ({ moduleName: "classbook", endpointName: e, parameters: { student: { id: gewaehlt.id } } })) };
     const res = await fetch("/api/calls", { method: "POST", credentials: "include", headers: kopf(), body: JSON.stringify(body) });
     if (res.status === 429) { fehler("Zu viele Anfragen (HTTP 429). Bitte später noch einmal, nicht sofort wieder klicken."); return; }
-    if (res.status === 401 || res.status === 403) { fehler("Sitzung nicht erkannt (HTTP " + res.status + "). Neu einloggen und erneut versuchen."); return; }
+    if (res.status === 401 || res.status === 403) { diagnose(); fehler("Sitzung nicht erkannt (HTTP " + res.status + "). Neu einloggen und erneut versuchen."); return; }
     if (!res.ok) {
       const t = await res.text().catch(() => "");
+      diagnose();
       fehler("Abruf fehlgeschlagen: HTTP " + res.status + " " + t.slice(0, 300) + " [bundleVersion " + bundle.v + ", Endpoints " + ENDPOINTS.join("/") + "]");
       return;
     }

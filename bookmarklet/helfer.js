@@ -100,3 +100,54 @@ export function zaehleDatensaetze(roh) {
   const results = roh && Array.isArray(roh.results) ? roh.results : [];
   return results.reduce((s, r) => s + (r && Array.isArray(r.data) ? r.data.length : 0), 0);
 }
+
+/** Nutzlast (mittlerer Teil) eines JWT als Objekt, sonst null. Kein Signaturcheck, nur lesen. */
+export function jwtNutzlast(token) {
+  if (!siehtNachJwtAus(token)) return null;
+  try {
+    const b64 = token.trim().split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const bytes = Uint8Array.from(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)), (c) => c.charCodeAt(0));
+    const obj = JSON.parse(new TextDecoder().decode(bytes));
+    return obj && typeof obj === "object" ? obj : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Schüler-Zuordnung direkt aus den Sitzungsdaten im Browser (Storage-Einträge als JSON oder
+ * JWT-Nutzlast), ohne eigenen Request. Liefert dieselbe Form wie findeAssociatedStudents.
+ */
+export function schuelerAusSpeicher(eintraege) {
+  const objekte = [];
+  for (const [, v] of eintraege) {
+    if (typeof v !== "string") continue;
+    const wert = v.trim();
+    if (siehtNachJwtAus(wert)) {
+      const n = jwtNutzlast(wert);
+      if (n) objekte.push(n);
+    } else if (wert.startsWith("{") || wert.startsWith("[")) {
+      try { objekte.push(JSON.parse(wert)); } catch (e) { /* kein JSON */ }
+    }
+  }
+  const jwt = findeJwt(eintraege);
+  if (jwt) { const n = jwtNutzlast(jwt); if (n) objekte.push(n); }
+  return findeAssociatedStudents(objekte);
+}
+
+/**
+ * API-Pfade, die die Seite selbst schon aufgerufen hat (aus den Resource-Timing-Namen), nur
+ * eigene Origin, ohne Query, Zahlenfolgen ab 5 Stellen maskiert. Dient allein der Diagnose,
+ * damit der richtige Pfad für login-status nicht geraten werden muss.
+ */
+export function apiPfade(namen, origin) {
+  const pfade = new Set();
+  for (const n of namen) {
+    if (typeof n !== "string" || !n.startsWith(origin + "/")) continue;
+    let p;
+    try { p = new URL(n).pathname; } catch (e) { continue; }
+    if (!/\/api\//.test(p)) continue;
+    pfade.add(p.replace(/\d{5,}/g, "#"));
+  }
+  return [...pfade].sort();
+}
