@@ -1,0 +1,337 @@
+/* Unterrichtsarchiv — alle Farben über Variablen, Dark Mode über prefers-color-scheme. */
+
+:root {
+  color-scheme: light dark;
+  --papier: #f2f4f6;
+  --karte: #ffffff;
+  --tinte: #171e26;
+  --leise: #5b6875;
+  --linie: #d9dee4;
+  --akzent: #1f4e79;
+  --akzent-text: #ffffff;
+  --akzent-weich: #e3ecf5;
+  --marker-bg: #ffe27a;
+  --marker-fg: #171e26;
+  --ok-bg: #e2f5e8;   --ok-fg: #1d5b32;
+  --warn-bg: #fff4d6; --warn-fg: #6b4b00;
+  --fehler-bg: #fde2e2; --fehler-fg: #7a1f1f;
+  --gefahr: #b42318;
+  --radius: 10px;
+  --tap: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --papier: #121619;
+    --karte: #1b2126;
+    --tinte: #e8ecf0;
+    --leise: #9aa7b3;
+    --linie: #2c353d;
+    --akzent: #7fb3e6;
+    --akzent-text: #0b1a28;
+    --akzent-weich: #1e2f3f;
+    --marker-bg: #7a6200;
+    --marker-fg: #fff7d6;
+    --ok-bg: #163526;   --ok-fg: #9fe0b6;
+    --warn-bg: #3d2f08; --warn-fg: #ffd97a;
+    --fehler-bg: #3f1a1a; --fehler-fg: #ffb3b3;
+    --gefahr: #ff8a80;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--papier);
+  color: var(--tinte);
+  font: 400 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+button, input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  min-height: var(--tap);
+  padding: 8px 14px;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--karte);
+  cursor: pointer;
+}
+
+button:hover { border-color: var(--leise); }
+
+button[aria-pressed="true"] {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--akzent-text);
+}
+
+button.gefahr {
+  color: var(--gefahr);
+  border-color: var(--gefahr);
+}
+
+button.gross {
+  font-weight: 600;
+  padding: 12px 18px;
+}
+
+button:focus-visible, input:focus-visible, a:focus-visible {
+  outline: 2px solid var(--akzent);
+  outline-offset: 2px;
+}
+
+input[type="search"], input[type="date"], input[type="text"] {
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--karte);
+  min-width: 0;
+}
+
+a { color: var(--akzent); }
+
+/* Kopf */
+.kopf {
+  padding: calc(16px + env(safe-area-inset-top)) 16px 12px;
+  background: var(--karte);
+  border-bottom: 1px solid var(--linie);
+}
+
+.kopf-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.kopf h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.kopf-knoepfe { display: flex; gap: 8px; }
+
+.stand {
+  margin: 6px 0 0;
+  color: var(--leise);
+  font-size: 14px;
+}
+
+/* Meldungen */
+.meldung {
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.meldung.ok { background: var(--ok-bg); color: var(--ok-fg); }
+.meldung.warn { background: var(--warn-bg); color: var(--warn-fg); }
+.meldung.fehler { background: var(--fehler-bg); color: var(--fehler-fg); }
+.meldung .text { flex: 1; }
+.meldung .text p { margin: 0; }
+.meldung .text ul { margin: 6px 0 0; padding-left: 18px; }
+.meldung button { min-height: 32px; padding: 4px 10px; background: transparent; border-color: currentColor; color: inherit; }
+
+/* Klausur-Karte */
+.klausur {
+  margin: 12px 16px 0;
+  padding: 14px;
+  background: var(--karte);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+}
+
+.klausur.aktiv { border-color: var(--akzent); background: var(--akzent-weich); }
+
+.klausur-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.klausur .info {
+  margin: 0;
+  color: var(--leise);
+  font-size: 14px;
+  flex: 1 1 220px;
+}
+
+.klausur .feld { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+
+/* Kursleiste */
+.kurse {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 12px 16px 4px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.kurse button {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.kurse .n {
+  color: var(--leise);
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kurse button[aria-pressed="true"] .n { color: inherit; opacity: .8; }
+
+/* Werkzeuge */
+.werkzeuge {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--papier);
+  border-bottom: 1px solid var(--linie);
+}
+
+.werkzeuge input[type="search"] { flex: 1 1 200px; }
+.werkzeuge .feld { display: flex; align-items: center; gap: 6px; color: var(--leise); font-size: 14px; }
+
+/* Liste */
+main {
+  padding: 8px 16px 40px;
+  max-width: 780px;
+}
+
+.kursblock { margin-top: 26px; }
+
+.kursblock > h2 {
+  margin: 0 0 2px;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.spanne { color: var(--leise); font-size: 13px; margin-bottom: 10px; }
+
+.monat {
+  margin: 16px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--leise);
+  border-bottom: 1px solid var(--linie);
+  padding-bottom: 4px;
+}
+
+.eintrag {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--linie);
+}
+
+.wann {
+  color: var(--leise);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  padding-top: 3px;
+}
+
+.thema {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.thema.leer { color: var(--leise); font-style: italic; }
+
+.ha {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--leise);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ha b { font-weight: 600; color: var(--tinte); }
+
+mark {
+  background: var(--marker-bg);
+  color: var(--marker-fg);
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.leer-hinweis {
+  margin: 32px 0;
+  padding: 18px;
+  background: var(--karte);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  color: var(--leise);
+}
+
+.leer-hinweis h2 { margin: 0 0 8px; font-size: 17px; color: var(--tinte); }
+.leer-hinweis ol { padding-left: 20px; margin: 8px 0; }
+.leer-hinweis .knoepfe { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* Einstellungen */
+.einstellungen {
+  padding: 8px 16px 40px;
+  max-width: 780px;
+}
+
+.einstellungen h2 { font-size: 20px; margin: 16px 0 8px; }
+.einstellungen h3 { font-size: 15px; color: var(--leise); margin: 22px 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+.einstellungen p { color: var(--leise); font-size: 14px; margin: 0 0 10px; }
+
+.kurs-tabelle {
+  display: grid;
+  gap: 10px;
+}
+
+.kurs-zeile {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding: 12px;
+  background: var(--karte);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+}
+
+.kurs-zeile .roh { font-weight: 600; overflow-wrap: anywhere; }
+.kurs-zeile .roh small { display: block; font-weight: 400; color: var(--leise); font-size: 13px; }
+.kurs-zeile label { display: grid; gap: 4px; font-size: 13px; color: var(--leise); }
+
+@media (min-width: 640px) {
+  .kurs-zeile { grid-template-columns: 1.4fr 1fr 1fr; align-items: end; gap: 12px; }
+}
+
+.knopfreihe { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+
+@media (max-width: 480px) {
+  .eintrag { grid-template-columns: 1fr; gap: 2px; }
+  .wann { padding-top: 0; }
+  .kopf h1 { font-size: 20px; }
+  /* Drei Zeilen Werkzeuge würden auf dem Handy dauerhaft ein Drittel des Displays belegen. */
+  .werkzeuge { position: static; }
+  .werkzeuge .feld { flex: 1 1 auto; }
+  .werkzeuge .feld input { flex: 1; }
+}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f2f4f6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121619" media="(prefers-color-scheme: dark)">
+  <title>Unterrichtsarchiv</title>
+  <link rel="stylesheet" href="./ui/stil.css">
+</head>
+<body>
+  <header class="kopf">
+    <div class="kopf-zeile">
+      <h1>Unterrichtsarchiv</h1>
+      <div class="kopf-knoepfe">
+        <button type="button" id="knopf-import">Importieren</button>
+        <button type="button" id="knopf-einstellungen" aria-pressed="false">Einstellungen</button>
+      </div>
+    </div>
+    <p class="stand" id="stand"></p>
+  </header>
+
+  <div id="meldung" class="meldung" role="status" hidden></div>
+
+  <div id="liste-bereich">
+    <section class="klausur" id="klausur" aria-label="Seit letzter Klausur"></section>
+
+    <nav class="kurse" id="kursleiste" aria-label="Kurse"></nav>
+
+    <div class="werkzeuge" id="werkzeuge">
+      <input type="search" id="suche" placeholder="Suchen, z. B. Ableitung" autocomplete="off" aria-label="Suche">
+      <label class="feld"><span>ab</span><input type="date" id="ab" aria-label="Ab Datum"></label>
+      <button type="button" id="nur-ha" aria-pressed="false">nur mit Hausaufgabe</button>
+      <button type="button" id="reset">Zurücksetzen</button>
+    </div>
+
+    <main id="ausgabe"></main>
+  </div>
+
+  <section id="einstellungen" class="einstellungen" hidden aria-label="Einstellungen"></section>
+
+  <input type="file" id="datei" accept=".json,application/json" multiple hidden>
+
+  <script type="module" src="./ui/app.js"></script>
+</body>
+</html>
