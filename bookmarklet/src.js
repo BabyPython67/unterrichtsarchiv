@@ -125,28 +125,45 @@
     const eintraege = storageEintraege();
     log("Diagnose · Storage-Schlüssel: " + (eintraege.map((e) => e[0]).slice(0, 30).join(", ") || "keine"));
     log("Diagnose · Token im Storage: " + (findeJwt(eintraege) ? "ja" : "nein"));
+    for (const z of sitzungsFelder(eintraege)) log("Diagnose · Felder in " + z);
     let namen = [];
     try { namen = performance.getEntriesByType("resource").map((r) => r.name); } catch (e) { /* kein Timing */ }
     log("Diagnose · API-Pfade der Seite: " + (apiPfade(namen, location.origin).join(", ") || "keine gesehen"));
     kopieren.hidden = false;
   }
 
+  // login-status: die Seite ruft den Pfad selbst auf, per GET kam live 404. Deshalb zuerst
+  // POST (wie /api/calls), bei 404/405 einmal GET. Kein Wiederholen desselben Aufrufs.
+  async function loginStatus() {
+    const versuche = [];
+    let res = null;
+    for (const methode of ["POST", "GET"]) {
+      const init = { method: methode, credentials: "include", headers: kopf() };
+      if (methode === "POST") init.body = "{}";
+      res = await fetch("/api/login-status", init);
+      versuche.push(methode + ": HTTP " + res.status);
+      if (res.status !== 404 && res.status !== 405) break;
+    }
+    return { res: res, versuche: versuche.join(", ") };
+  }
+
   ;(async () => {
     let schueler = schuelerAusSpeicher(storageEintraege());
     let herkunft = "Sitzungsdaten im Browser";
     if (!schueler.length) {
-      const statusRes = await fetch("/api/login-status", { credentials: "include", headers: kopf() });
-      if (!statusRes.ok) {
+      const st = await loginStatus();
+      if (st.res.status === 429) { fehler("Zu viele Anfragen (HTTP 429). Bitte später noch einmal, nicht sofort wieder klicken."); return; }
+      if (!st.res.ok) {
         diagnose();
-        fehler("login-status antwortet mit HTTP " + statusRes.status + " (Pfad /api/login-status). Bist du eingeloggt?");
+        fehler("login-status antwortet nicht (" + st.versuche + "). Bist du eingeloggt?");
         return;
       }
-      const status = await statusRes.json();
+      const status = await st.res.json();
       schueler = findeAssociatedStudents(status);
       herkunft = "login-status";
       if (!schueler.length) {
         diagnose();
-        fehler("Keine Schüler-Zuordnung (associatedStudent) in login-status gefunden. Felder der Antwort: " + Object.keys(status || {}).join(", "));
+        fehler("Keine Schüler-Zuordnung (associatedStudent) in login-status gefunden. Felder der Antwort: " + (feldnamen(status).join(", ") || "keine"));
         return;
       }
     }

@@ -90,10 +90,13 @@ Altbestand stehen.
   belegt. Antwortet eine Teilanfrage nicht mit 200, nennt die Statusbox den Namen.
 - Die Schüler-Zuordnung (`associatedStudent`) liest das Lesezeichen zuerst aus den
   Sitzungsdaten im Browser (Storage, Token-Nutzlast), ohne eigene Anfrage. Erst wenn dort
-  nichts steht, fragt es `GET /api/login-status`; dieser Pfad ist unbestätigt (erster Test:
-  404). Schlägt beides fehl, zeigt die Statusbox eine Diagnose: Storage-Schlüsselnamen, ob
-  ein Token da ist und welche API-Pfade die Seite selbst aufruft. Bei mehreren Schülern
-  fragt es nach.
+  nichts steht, ruft es `/api/login-status` auf: zuerst per POST (so spricht die Seite auch
+  `/api/calls` an), bei 404 oder 405 einmal per GET. Stand der Live-Tests: die Antwort hat
+  die Form `{ isAuthenticated, user: { …, associatedStudent: { id, … } } }`, GET liefert
+  404, die Sitzungsdaten (Schlüssel `user`, `jwt`) enthalten keine Zuordnung, POST ist noch
+  unbestätigt. Schlägt alles fehl, zeigt die Statusbox eine Diagnose: Storage-Schlüsselnamen,
+  Feldnamen der Sitzungsdaten (nie Werte), ob ein Token da ist und welche API-Pfade die
+  Seite selbst aufruft. Bei mehreren Schülern fragt es nach.
 - Ob die Sitzung per Cookie oder per Token im Storage läuft, ist unbekannt; beides wird
   mitgeschickt. 401 oder 403 → „Sitzung nicht erkannt“.
 - Blockt Schulmanager fremde Fenster (Cross-Origin-Opener-Policy), kommt kein „bereit“

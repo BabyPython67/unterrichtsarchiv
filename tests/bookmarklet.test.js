@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
-import { findeAssociatedStudents, findeBundleVersion, siehtNachJwtAus, findeJwt, dateinameFuerDatum, pruefeAntwortStatus, zaehleDatensaetze, jwtNutzlast, schuelerAusSpeicher, apiPfade } from "../bookmarklet/helfer.js";
+import { findeAssociatedStudents, findeBundleVersion, siehtNachJwtAus, findeJwt, dateinameFuerDatum, pruefeAntwortStatus, zaehleDatensaetze, jwtNutzlast, schuelerAusSpeicher, apiPfade, feldnamen, sitzungsFelder } from "../bookmarklet/helfer.js";
 import { bookmarkletBauen, bookmarkletModul, codeVerdichten, STANDARD, WURZEL } from "../tools/build.mjs";
 import { originErlaubt, bereitZiele } from "../quellen/empfangsQuelle.js";
 import { kombiniert } from "./hilfen.js";
@@ -117,4 +117,48 @@ test("apiPfade: nur eigene Origin, nur /api/, ohne Query, Zahlen maskiert, sorti
   ];
   assert.deepEqual(apiPfade(namen, o), ["/api/calls", "/api/login-status", "/api/user/#/status"]);
   assert.deepEqual(apiPfade([], o), []);
+});
+
+test("findeAssociatedStudents: login-status-Antwort in der live gesehenen Form (Werte erfunden)", () => {
+  const antwort = {
+    isAuthenticated: true,
+    user: {
+      email: "x@example.invalid", username: null, id: 1, roles: null, firstname: "Test", lastname: "Person", institutionId: 1,
+      associatedTeachers: [],
+      associatedStudent: { id: 4242424, firstname: "Test", lastname: "Person", sex: "Male", classId: 1, birthday: "2000-01-01", isFullAged: null },
+      associatedParents: [],
+    },
+  };
+  assert.deepEqual(findeAssociatedStudents(antwort), [{ id: 4242424, name: "Test Person" }]);
+});
+
+test("findeJwt / schuelerAusSpeicher: als JSON-String abgelegte Werte werden ausgepackt", () => {
+  const jwt = jwtBauen({ user: { associatedStudent: { id: 4242424, firstname: "Max" } } });
+  assert.equal(findeJwt([["jwt", JSON.stringify(jwt)]]), jwt);
+  assert.deepEqual(schuelerAusSpeicher([["jwt", JSON.stringify(jwt)]]).map((s) => s.id), [4242424]);
+  assert.equal(findeJwt([["jwt", '"kein token"']]), null);
+  assert.equal(findeJwt([["x", '"']]), null);
+});
+
+test("feldnamen: Pfade mit Typ, Tiefe und Anzahl begrenzt, Arrays über erstes Element, Zahlenschlüssel maskiert, keine Werte", () => {
+  const obj = { id: 7, email: "geheim@example.invalid", associatedStudent: { id: 42, firstname: "Max", klasse: { name: "10a" } }, roles: [{ name: "student" }], leer: null, "12345": 1 };
+  const f = feldnamen(obj);
+  assert.deepEqual(f, [
+    "#:number",
+    "id:number", "email:string", "associatedStudent:{}", "associatedStudent.id:number", "associatedStudent.firstname:string",
+    "associatedStudent.klasse:{}", "associatedStudent.klasse.name:string", "roles:[1]", "roles[].name:string", "leer:null",
+  ]);
+  assert.ok(!f.join(" ").includes("geheim") && !f.join(" ").includes("Max") && !f.join(" ").includes("10a"));
+  assert.deepEqual(feldnamen(obj, 0).filter((x) => x.includes(".")), []);
+  assert.equal(feldnamen(Object.fromEntries(Array.from({ length: 60 }, (_, i) => ["f" + i, i]))).length, 40);
+  assert.deepEqual(feldnamen(null), []);
+  assert.deepEqual(feldnamen("text"), []);
+});
+
+test("sitzungsFelder: JSON- und JWT-Einträge als Feldlisten ohne Werte, Rest übersprungen", () => {
+  const jwt = jwtBauen({ sub: "abc", exp: 1 });
+  const z = sitzungsFelder([["user", JSON.stringify({ id: 1, email: "x@example.invalid" })], ["jwt", jwt], ["zahl", "5"], ["muell", "{kaputt"], ["obj", 3]]);
+  assert.deepEqual(z, ["user: id:number, email:string", "jwt (Token-Nutzlast): sub:string, exp:number"]);
+  assert.ok(!z.join(" ").includes("x@example"));
+  assert.deepEqual(sitzungsFelder([]), []);
 });

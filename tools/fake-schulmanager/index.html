@@ -22,7 +22,7 @@
   <label><input type="checkbox" id="topics-kaputt"> get-topics mit Status 404 beantworten (Warnung testen)</label>
   <label><input type="checkbox" id="rate-limit"> HTTP 429 liefern</label>
   <label><input type="checkbox" id="zwei-schueler"> zwei zugeordnete Schüler (Auswahl-Prompt testen)</label>
-  <label><input type="checkbox" id="status-kaputt"> login-status mit 404 beantworten (Diagnose testen)</label>
+  <label><input type="checkbox" id="status-kaputt"> login-status auch per POST mit 404 beantworten (Diagnose testen)</label>
   <button type="button" id="start">Bookmarklet ausführen</button>
 
   <h2>Protokoll der Attrappe</h2>
@@ -32,6 +32,8 @@
     // Inline-Skript mit einer bundleVersion, damit die Erkennung "Seite" greift.
     window.__attrappe = { bundleVersion: "deadbeef01" };
     const protokoll = (t) => { document.getElementById("protokoll").textContent += t + "\n"; };
+    // Wie live: Schlüssel "user" und "jwt", beide ohne Schüler-Zuordnung (Testdaten, nichts Echtes).
+    localStorage.setItem("user", JSON.stringify({ id: 1, email: "test@example.invalid", roles: [{ name: "student" }], institution: null }));
     localStorage.setItem("jwt", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE5MDAwMDAwMDB9.abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMN");
 
     const echt = window.fetch.bind(window);
@@ -42,10 +44,13 @@
       const u = String(url);
       const bearer = init.headers && init.headers.Authorization ? "mit Bearer" : "ohne Bearer";
       if (u.includes("/api/login-status")) {
-        protokoll(`GET ${u} (${bearer})`);
-        if (document.getElementById("status-kaputt").checked) return antwort({ error: "not found" }, 404);
-        const student = { id: 424242, firstname: "Test", lastname: "Person" };
-        const user = { id: 1, associatedStudent: student };
+        const methode = (init.method || "GET").toUpperCase();
+        protokoll(`${methode} ${u} (${bearer})`);
+        // Wie live beobachtet: GET gibt 404. POST ist die Annahme für den echten Aufruf.
+        if (methode !== "POST" || document.getElementById("status-kaputt").checked) return antwort({ error: "not found" }, 404);
+        // Form wie die echte Antwort, Werte erfunden.
+        const student = { id: 424242, firstname: "Test", lastname: "Person", sex: "Male", classId: 1, birthday: "2000-01-01", isFullAged: null };
+        const user = { email: "test@example.invalid", id: 1, roles: null, firstname: "Test", lastname: "Person", institutionId: 1, associatedTeachers: [], associatedStudent: student, associatedParents: [] };
         if (document.getElementById("zwei-schueler").checked) {
           user.associatedStudents = [student, { id: 434343, firstname: "Zweites", lastname: "Kind" }];
         }

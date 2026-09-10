@@ -54,6 +54,16 @@ function jwtInObjekt(obj, tiefe = 3) {
   return null;
 }
 
+/** Storage-Werte, die als JSON-String abgelegt sind (mit Anführungszeichen), auspacken; sonst nur trimmen. */
+function stringEntpacken(wert) {
+  if (typeof wert !== "string") return wert;
+  const w = wert.trim();
+  if (w.length > 1 && w.startsWith('"') && w.endsWith('"')) {
+    try { const p = JSON.parse(w); if (typeof p === "string") return p.trim(); } catch (e) { /* kein JSON */ }
+  }
+  return w;
+}
+
 /**
  * Sucht in Storage-Einträgen [[schlüssel, wert], ...] nach einem JWT, roh oder in JSON
  * verpackt. Schlüssel mit jwt/token/auth im Namen haben Vorrang. Null, wenn nichts da ist —
@@ -62,8 +72,8 @@ function jwtInObjekt(obj, tiefe = 3) {
 export function findeJwt(eintraege) {
   const kandidaten = [];
   for (const [k, v] of eintraege) {
-    if (typeof v !== "string") continue;
-    const wert = v.trim();
+    const wert = stringEntpacken(v);
+    if (typeof wert !== "string") continue;
     if (siehtNachJwtAus(wert)) {
       kandidaten.push({ k: String(k), token: wert });
     } else if (wert.startsWith("{") || wert.startsWith("[")) {
@@ -121,8 +131,8 @@ export function jwtNutzlast(token) {
 export function schuelerAusSpeicher(eintraege) {
   const objekte = [];
   for (const [, v] of eintraege) {
-    if (typeof v !== "string") continue;
-    const wert = v.trim();
+    const wert = stringEntpacken(v);
+    if (typeof wert !== "string") continue;
     if (siehtNachJwtAus(wert)) {
       const n = jwtNutzlast(wert);
       if (n) objekte.push(n);
@@ -150,4 +160,43 @@ export function apiPfade(namen, origin) {
     pfade.add(p.replace(/\d{5,}/g, "#"));
   }
   return [...pfade].sort();
+}
+
+/**
+ * Feldnamen eines Objekts als Pfade mit Typ (z. B. "user.associatedStudent.id:number"), in
+ * Tiefe und Anzahl begrenzt, NIE Werte. Zahlenschlüssel werden zu "#". Nur für die Diagnose.
+ */
+export function feldnamen(obj, tiefe = 2, max = 40) {
+  const aus = [];
+  const typVon = (v) => (v === null ? "null" : Array.isArray(v) ? "[" + v.length + "]" : typeof v === "object" ? "{}" : typeof v);
+  const gehe = (o, praefix, t) => {
+    if (!o || typeof o !== "object") return;
+    if (Array.isArray(o)) { gehe(o[0], praefix + "[]", t); return; }
+    for (const [k, v] of Object.entries(o)) {
+      if (aus.length >= max) return;
+      const name = praefix + (praefix ? "." : "") + (/^\d+$/.test(k) ? "#" : k);
+      aus.push(name + ":" + typVon(v));
+      if (t > 0) gehe(v, name, t - 1);
+    }
+  };
+  gehe(obj, "", tiefe);
+  return aus;
+}
+
+/**
+ * Je Storage-Eintrag, der JSON oder ein JWT ist, die Feldnamen: "user: id:number, …".
+ * Keine Werte, damit die Diagnose gefahrlos weitergegeben werden kann.
+ */
+export function sitzungsFelder(eintraege) {
+  const zeilen = [];
+  for (const [k, v] of eintraege) {
+    const wert = stringEntpacken(v);
+    if (typeof wert !== "string") continue;
+    let obj = null;
+    let art = "";
+    if (siehtNachJwtAus(wert)) { obj = jwtNutzlast(wert); art = " (Token-Nutzlast)"; }
+    else if (wert.startsWith("{") || wert.startsWith("[")) { try { obj = JSON.parse(wert); } catch (e) { obj = null; } }
+    if (obj && typeof obj === "object") zeilen.push(String(k) + art + ": " + (feldnamen(obj).join(", ") || "leer"));
+  }
+  return zeilen;
 }
