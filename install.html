@@ -58,6 +58,8 @@
       <a class="ziehen" id="lesezeichen" href="#">Unterrichtsarchiv holen</a>
       <p class="hinweis">Lesezeichenleiste einblenden: Chrome/Edge <kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>B</kbd>, Firefox über „Ansicht → Symbolleisten".
         Alternativ: irgendeine Seite als Lesezeichen speichern, dann das Lesezeichen bearbeiten und als Adresse den Text aus dem Feld unten einfügen.</p>
+      <p class="hinweis">Kennung dieses Lesezeichens: <b>Build <span id="build">…</span></b>. Dieselbe Kennung zeigt die Statusbox im Schulmanager.
+        Weicht sie ab, ist dein Lesezeichen veraltet: altes löschen, neu ziehen.</p>
     </div>
 
     <h2>iPhone und iPad (Safari)</h2>
@@ -97,11 +99,13 @@
   </div>
 
   <script type="module">
-    import { BOOKMARKLET_URL, VIEWER_URL } from "./bookmarklet/bookmarklet.js";
+    // Mit Zeitstempel laden, damit nach einem Update nie ein alter Lesezeichen-Code aus dem Browsercache kommt.
+    const { BOOKMARKLET_URL, VIEWER_URL, BUILD } = await import("./bookmarklet/bookmarklet.js?t=" + Date.now());
     const a = document.getElementById("lesezeichen");
     a.href = BOOKMARKLET_URL;
     document.getElementById("url").value = BOOKMARKLET_URL;
     document.getElementById("viewer-url").textContent = VIEWER_URL;
+    document.getElementById("build").textContent = BUILD;
     const meldung = document.getElementById("meldung");
     const zeigen = (art, text) => { meldung.textContent = text; meldung.className = "meldung " + art; meldung.hidden = false; };
     a.addEventListener("click", (e) => {

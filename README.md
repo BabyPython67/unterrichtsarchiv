@@ -25,7 +25,10 @@ Lesezeichen anlegen: <https://babypython67.github.io/unterrichtsarchiv/install.h
 
 Der Viewer ist als PWA installierbar („Zum Startbildschirm“). Der Service Worker cached nur
 die App-Dateien, nie Nutzerdaten; nach jedem Deploy mit geänderter Shell bekommt er einen
-neuen Cache-Namen und räumt den alten weg.
+neuen Cache-Namen und räumt den alten weg. `install.html` und der Lesezeichen-Code werden bei
+bestehender Verbindung immer frisch geholt, damit nach einem Update nie ein altes Lesezeichen
+gezogen wird. Statusbox und `install.html` zeigen dieselbe Build-Kennung (acht Zeichen); weicht
+sie ab, ist das Lesezeichen veraltet und muss neu gezogen werden.
 
 ## Aufbau
 

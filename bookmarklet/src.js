@@ -11,6 +11,7 @@
   const VIEWER_URL = "__VIEWER_URL__";
   const SCHULMANAGER_ORIGIN = "__SCHULMANAGER_ORIGIN__";
   const VIEWER_ORIGIN = new URL(VIEWER_URL).origin;
+  const BUILD = "__BUILD__";
   const BUNDLE_FALLBACK = "a6ef588fd2";
   const ENDPOINTS = ["get-topics", "get-homework"];
   const TYP = { bereit: "unterrichtsarchiv:bereit", rohdaten: "unterrichtsarchiv:rohdaten", fehler: "unterrichtsarchiv:fehler", empfangen: "unterrichtsarchiv:empfangen" };
@@ -31,7 +32,7 @@
   box.setAttribute("style", "position:fixed;top:12px;right:12px;z-index:2147483647;width:min(380px,calc(100vw - 24px));background:#ffffff;color:#111111;border:1px solid #c9d1d9;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);font:14px/1.45 system-ui,-apple-system,sans-serif;padding:12px 14px;text-align:left;");
   const titel = document.createElement("div");
   titel.setAttribute("style", "font-weight:600;margin-bottom:6px;");
-  titel.textContent = "Unterrichtsarchiv";
+  titel.textContent = "Unterrichtsarchiv · Build " + BUILD;
   const protokoll = document.createElement("div");
   protokoll.setAttribute("style", "white-space:pre-wrap;word-break:break-word;max-height:40vh;overflow:auto;");
   const leiste = document.createElement("div");
@@ -47,7 +48,7 @@
   const zeilen = [];
   const log = (text) => { zeilen.push(text); protokoll.textContent = zeilen.join("\n"); };
   const kopieren = knopf("Meldung kopieren", () => {
-    const t = "Unterrichtsarchiv-Bookmarklet " + new Date().toISOString() + "\n" + zeilen.join("\n");
+    const t = "Unterrichtsarchiv-Bookmarklet " + new Date().toISOString() + " · Build " + BUILD + "\n" + zeilen.join("\n");
     const p = navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject(new Error("kein Clipboard"));
     p.then(() => log("(kopiert)"), () => window.prompt("Zum Kopieren markieren:", t));
   });

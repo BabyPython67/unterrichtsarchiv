@@ -53,8 +53,12 @@ test("codeVerdichten: Kommentarzeilen und Einrückung weg, Code bleibt", () => {
 });
 
 test("bookmarkletBauen: Platzhalter ersetzt, Helfer ohne export, javascript:-URL, Code ist gültiges JS", () => {
-  const { code, url } = bookmarkletBauen();
+  const { code, url, build } = bookmarkletBauen();
   assert.ok(url.startsWith("javascript:void%20"));
+  assert.match(build, /^[0-9a-f]{8}$/);
+  assert.ok(code.includes(`const BUILD = "${build}";`) && !code.includes("__BUILD__"), "Build-Kennung muss im Code stehen");
+  assert.equal(bookmarkletBauen().build, build, "Kennung muss reproduzierbar sein");
+  assert.notEqual(bookmarkletBauen({ src: "void 0;" }).build, build);
   assert.ok(!code.includes("__VIEWER_URL__") && !code.includes("__SCHULMANAGER_ORIGIN__"));
   assert.ok(code.includes(`"${STANDARD.viewer}"`) && code.includes(`"${STANDARD.origin}"`));
   assert.ok(!/^export /m.test(code));
@@ -69,7 +73,9 @@ test("bookmarkletBauen: Platzhalter ersetzt, Helfer ohne export, javascript:-URL
 test("bookmarklet/bookmarklet.js ist aktuell (sonst: npm run build)", () => {
   const pfad = new URL("../bookmarklet/bookmarklet.js", import.meta.url);
   assert.ok(existsSync(pfad), "bookmarklet/bookmarklet.js fehlt, npm run build ausführen");
-  const erwartet = bookmarkletModul({ ...STANDARD, url: bookmarkletBauen().url });
+  const { url, build } = bookmarkletBauen();
+  const erwartet = bookmarkletModul({ ...STANDARD, url, build });
+  assert.ok(erwartet.includes(`export const BUILD = "${build}";`));
   assert.equal(readFileSync(pfad, "utf8").replace(/\r\n/g, "\n"), erwartet);
 });
 

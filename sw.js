@@ -3,9 +3,12 @@
 // ein Deploy mit geänderter Shell bekommt einen neuen Cache-Namen, alte Caches werden beim
 // Aktivieren gelöscht, damit niemand auf einer alten Version festhängt.
 
-const VERSION = "0b37fd313823";
+const VERSION = "96ff17fc709d";
 const CACHE = "unterrichtsarchiv-shell-" + VERSION;
 const PRAEFIX = "unterrichtsarchiv-shell-";
+// Diese beiden werden bei Verbindung immer frisch geholt (Cache nur als Rückfall offline):
+// sonst zieht man nach einem Update ein altes Lesezeichen aus dem Cache.
+const NETZ_ZUERST = ["/install.html", "/bookmarklet/bookmarklet.js"];
 
 const SHELL = [
   "./",
@@ -46,7 +49,19 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
-  if (new URL(req.url).origin !== self.location.origin) return; // Fremdes nie anfassen
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return; // Fremdes nie anfassen
+  if (NETZ_ZUERST.some((p) => url.pathname.endsWith(p))) {
+    e.respondWith(fetch(req).then((antwort) => {
+      if (antwort.ok) {
+        const kopie = antwort.clone();
+        url.search = ""; // ohne Query ablegen, damit der Cache nicht wächst
+        caches.open(CACHE).then((c) => c.put(url.href, kopie));
+      }
+      return antwort;
+    }).catch(() => caches.match(req, { ignoreSearch: true })));
+    return;
+  }
   // ignoreSearch: "./?empfang=1" (vom Bookmarklet geöffnet) trifft den Eintrag "./"
   e.respondWith(caches.match(req, { ignoreSearch: true }).then((treffer) => treffer || fetch(req)));
 });

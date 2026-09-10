@@ -33,3 +33,10 @@ test("sw.js fasst keine Nutzerdaten an: kein Storage-Zugriff im Code, nur GET, n
   assert.ok(/req\.method !== "GET"/.test(code));
   assert.ok(/self\.location\.origin/.test(code));
 });
+
+test("sw.js: install.html und Lesezeichen-Code werden netzwerk-zuerst geholt, Cache nur als Rückfall", () => {
+  const m = /const NETZ_ZUERST = \[([^\]]*)\];/.exec(swQuelle);
+  assert.ok(m, "NETZ_ZUERST fehlt");
+  assert.ok(m[1].includes('"/install.html"') && m[1].includes('"/bookmarklet/bookmarklet.js"'));
+  assert.ok(/fetch\(req\)\.then\([\s\S]*\.catch\(\(\) => caches\.match\(req/.test(swQuelle), "Netz zuerst, Cache als Rückfall");
+});

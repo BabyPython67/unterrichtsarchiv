@@ -35,15 +35,20 @@ export function bookmarkletBauen({ viewer = STANDARD.viewer, origin = STANDARD.o
   const code = codeVerdichten(helfer.replace(/^export /gm, "") + "\n" + src)
     .replaceAll("__VIEWER_URL__", viewer)
     .replaceAll("__SCHULMANAGER_ORIGIN__", origin);
-  const ganz = `void (() => {\n${code}\n})();`;
-  return { code: ganz, url: "javascript:" + encodeURIComponent(ganz) };
+  const roh = `void (() => {\n${code}\n})();`;
+  // Kurze Kennung des gebauten Codes; steht in Statusbox und install.html, damit man sieht,
+  // ob ein Lesezeichen aktuell ist. Gehasht wird der Code mit Platzhalter, sonst wäre es zirkulär.
+  const build = createHash("sha256").update(roh).digest("hex").slice(0, 8);
+  const ganz = roh.replaceAll("__BUILD__", build);
+  return { code: ganz, url: "javascript:" + encodeURIComponent(ganz), build };
 }
 
-export function bookmarkletModul({ viewer, origin, url }) {
+export function bookmarkletModul({ viewer, origin, url, build }) {
   return "// Gebaut von tools/build.mjs aus bookmarklet/helfer.js + src.js. Nicht von Hand ändern.\n" +
     `export const VIEWER_URL = ${JSON.stringify(viewer)};\n` +
     `export const SCHULMANAGER_ORIGIN = ${JSON.stringify(origin)};\n` +
-    `export const BOOKMARKLET_URL = ${JSON.stringify(url)};\n`;
+    `export const BOOKMARKLET_URL = ${JSON.stringify(url)};\n` +
+    `export const BUILD = ${JSON.stringify(build)};\n`;
 }
 
 /**
@@ -81,10 +86,10 @@ if (direktGestartet) {
   const a = argumente(process.argv.slice(2));
   const viewer = a.viewer || STANDARD.viewer;
   const origin = a.origin || STANDARD.origin;
-  const { url } = bookmarkletBauen({ viewer, origin });
+  const { url, build } = bookmarkletBauen({ viewer, origin });
   const out = resolve(WURZEL, a.out || "bookmarklet/bookmarklet.js");
-  writeFileSync(out, bookmarkletModul({ viewer, origin, url }));
-  console.log(`Bookmarklet: ${out} (${url.length} Zeichen, Viewer ${viewer}, Origin ${origin})`);
+  writeFileSync(out, bookmarkletModul({ viewer, origin, url, build }));
+  console.log(`Bookmarklet: ${out} (Build ${build}, ${url.length} Zeichen, Viewer ${viewer}, Origin ${origin})`);
 
   const istProduktion = !a.out && viewer === STANDARD.viewer && origin === STANDARD.origin;
   const swPfad = resolve(WURZEL, "sw.js");
