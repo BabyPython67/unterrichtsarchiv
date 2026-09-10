@@ -46,13 +46,16 @@ export function bookmarkletModul({ viewer, origin, url }) {
     `export const BOOKMARKLET_URL = ${JSON.stringify(url)};\n`;
 }
 
-/** Kurzer Hash über die Shell-Dateien; ändert sich nur, wenn sich deren Inhalt ändert. */
+/**
+ * Kurzer Hash über die Shell-Dateien; ändert sich nur, wenn sich deren Inhalt ändert.
+ * Zeilenenden werden auf LF normalisiert, damit ein CRLF-Checkout (Windows) nicht zählt.
+ */
 export function shellVersion(wurzel = WURZEL) {
   const h = createHash("sha256");
   for (const d of SHELL_DATEIEN) {
     const p = resolve(wurzel, d);
     h.update(d + "\n");
-    if (existsSync(p)) h.update(readFileSync(p));
+    if (existsSync(p)) h.update(readFileSync(p, "utf8").replace(/\r\n/g, "\n"));
   }
   return h.digest("hex").slice(0, 12);
 }

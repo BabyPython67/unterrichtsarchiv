@@ -1,0 +1,3 @@
+# Textdateien immer mit LF auschecken, damit Hashes und Builds auf jedem Rechner gleich sind.
+* text=auto eol=lf
+*.png binary
