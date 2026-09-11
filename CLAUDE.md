@@ -10,14 +10,27 @@ Eigenständiges Projekt, nicht verwandt mit anderen Repos im Workspace.
   Namen. Die Fixtures in `referenz/` sind anonymisiert (Schüler-ID = 0).
 - Ein Abruf pro Klick. Kein Polling, keine Retry-Schleifen, bei HTTP 429 abbrechen.
 - Anwesenheiten, Noten, Lehrkräfte, Namen von Mitschülern werden beim Normalisieren verworfen.
+  Das gilt auch für den Stundenplan-Cache: keine Lehrkraft, kein Name.
 - Kursalias nur beim Anzeigen anwenden, nie in die Einträge schreiben.
-- Keine Stundennummer anzeigen oder erfinden. `position` ist interner Schlüsselteil.
+- Keine Stundennummer anzeigen oder erfinden. `position` ist interner Schlüsselteil, `stunde`
+  im Stundenplan-Cache dient nur der Reihenfolge.
+- Zwei Datenarten, zwei Regeln: `eintraege` ist das Archiv und schrumpft nie. `stundenplan`
+  ist ein Cache, ein neuer Abruf ersetzt die Tage im Fenster vollständig. Nie vermischen.
+- Digest-Logik nur in `kern/logik.js` (`baueDigest`). Viewer und spätere Kurzbefehle nutzen
+  dieselbe Funktion, keine zweite Implementierung.
+
+## Oberfläche
+
+- Hausaufgabe ist Inhalt, kein Nebentext: volle Schriftgröße und Textfarbe. Leise Schrift nur
+  für Datum, Alter, Herkunft.
+- Keine Emoji, keine Floskeln, keine Deko. Kurze Sätze, deutsch.
+- Wording „Einträge“, nie „Stunden“.
 
 ## Arbeitsweise
 
 - `kern/` bleibt frei von DOM und `window`. Jede Logikänderung dort bekommt einen Test.
 - `npm test` vor jedem Commit. Nach Änderungen an `bookmarklet/src.js`, `bookmarklet/helfer.js`,
-  `index.html`, `ui/` oder `sw.js`: `npm run build` (sonst schlägt der Build-Stale-Test fehl).
+  `index.html`, `ui/`, `kern/` oder `sw.js`: `npm run build` (sonst schlägt der Build-Stale-Test fehl).
 - Direkt auf `main` committen und pushen; GitHub Pages liefert den Branch aus.
 - Nutzer kennt sich wenig mit Code aus: Erklärungen laienverständlich, technische Details nur
-  auf Nachfrage.
+  auf Nachfrage. Nach jedem Schritt: Geändert, Warum, Auswirkung, Zu prüfen.

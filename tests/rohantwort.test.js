@@ -81,7 +81,7 @@ test("importieren: Export-Datei -> Einträge gemergt, lokaler Alias gewinnt, fre
 });
 
 test("importieren: falsche Schema-Version und Müll werden abgewiesen", () => {
-  assert.throws(() => importieren(leererBestand(), { schemaVersion: 2, eintraege: [] }, "x", "x"), /Keine Unterrichtsdaten/);
+  assert.throws(() => importieren(leererBestand(), { schemaVersion: 9, eintraege: [] }, "x", "x"), /Keine Unterrichtsdaten/);
   assert.throws(() => importieren(leererBestand(), { foo: "bar" }, "x", "x"), /Keine Unterrichtsdaten/);
   assert.throws(() => importieren(leererBestand(), huelle({ results: [{ status: 404, data: null }] }), "x", "x"), /get-topics/);
 });

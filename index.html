@@ -26,6 +26,10 @@
       </div>
     </div>
     <p class="stand" id="stand"></p>
+    <nav class="reiter" aria-label="Ansicht">
+      <button type="button" id="reiter-archiv" aria-pressed="true">Archiv</button>
+      <button type="button" id="reiter-vorschau" aria-pressed="false">Vorschau</button>
+    </nav>
   </header>
 
   <div id="meldung" class="meldung" role="status" hidden></div>
@@ -44,6 +48,8 @@
 
     <main id="ausgabe"></main>
   </div>
+
+  <section id="vorschau" class="vorschau" hidden aria-label="Schultag-Vorschau"></section>
 
   <section id="einstellungen" class="einstellungen" hidden aria-label="Einstellungen"></section>
 

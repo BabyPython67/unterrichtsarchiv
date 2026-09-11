@@ -2,7 +2,9 @@
 
 Sammelt Unterrichtsinhalte und Hausaufgaben aus Schulmanager Online dauerhaft im eigenen
 Browser und macht sie nach Kurs, Datum und Suchwort durchsuchbar. Zweck: Vorbereitung auf
-Klausuren und Abitur — „Was wurde in Mathe seit der letzten Klausur behandelt?"
+Klausuren und Abitur — „Was wurde in Mathe seit der letzten Klausur behandelt?" Die Vorschau
+zeigt dazu den nächsten Schultag: welche Kurse anstehen, was dort zuletzt dran war und welche
+Hausaufgabe offen ist.
 
 - Kein Server, kein Konto, kein Passwort. Die Daten liegen nur im Browser des Nutzers.
 - Ein Lesezeichen (Bookmarklet) holt die Daten aus dem Tab, in dem man ohnehin eingeloggt ist.
@@ -30,10 +32,35 @@ bestehender Verbindung immer frisch geholt, damit nach einem Update nie ein alte
 gezogen wird. Statusbox und `install.html` zeigen dieselbe Build-Kennung (acht Zeichen); weicht
 sie ab, ist das Lesezeichen veraltet und muss neu gezogen werden.
 
+## Schultag-Vorschau
+
+Der Reiter „Vorschau“ zeigt den nächsten Schultag: bis zum Unterrichtsbeginn (Standard 08:00)
+den heutigen Tag, danach den nächsten. Wochenenden, freie Tage und Tage ohne Kurse werden
+übersprungen, höchstens 14 Tage weit. Je Kurs steht die Hausaufgabe zuerst und in voller
+Schrift, darunter das letzte Thema und wann der Eintrag war. Liegt der letzte Eintrag länger
+als 21 Tage zurück, ist das Datum markiert. Die Pfeile blättern zu weiteren Schultagen. In den
+Einstellungen lässt sich die Vorschau als Startansicht wählen.
+
+Woher die Vorschau weiß, welche Kurse an einem Tag sind, steht in der Zeile unter dem Datum:
+
+1. **Gemessen**: der Stundenplan aus Schulmanager, sobald das Lesezeichen ihn abruft. Noch nicht
+   umgesetzt, der Endpunkt muss erst mitgeschnitten werden; Speicher, Logik und Anzeige sind
+   vorbereitet. Entfallene Stunden stehen durchgestrichen, Vertretungen sind markiert. Fächer
+   aus dem Stundenplan werden den Kursen im Archiv zugeordnet; passt nichts automatisch, fragt
+   die Karte nach.
+2. **Abgeleitet**: aus den Einträgen der letzten 56 Tage, also welcher Kurs an welchem Wochentag
+   regelmäßig Einträge hatte. Unsichere Treffer sind markiert.
+3. **Manuell**: in den Einstellungen lässt sich je Wochentag ein Kurs fest setzen oder
+   ausschließen. Das gewinnt gegen die Ableitung.
+
+Die Vorschau warnt, wenn der letzte Abruf älter als drei Tage ist. Sie zeigt weder Stundennummer
+noch Uhrzeit, weil Schulmanager beides für die Inhalte nicht liefert.
+
 ## Aufbau
 
 ```
-kern/          reine Logik ohne Browser-Zugriff: Erkennung, Normalisierung, Merge, Filter, Speicher
+kern/          reine Logik ohne Browser-Zugriff: Erkennung, Normalisierung, Merge, Filter, Speicher,
+               Schultag-Vorschau (logik.js: Wochenplan, nächster Schultag, Digest, Statuszeilen)
 quellen/       Abrufschicht: Empfang per postMessage, Datei-Import (austauschbar)
 ui/            Viewer-Oberfläche
 bookmarklet/   Quelle (src.js, helfer.js) und gebauter Einzeiler (bookmarklet.js) des Lesezeichens
@@ -66,16 +93,31 @@ Der Viewer akzeptiert localhost-Absender nur, wenn er selbst auf localhost läuf
 
 ## Datenmodell
 
-Ein `localStorage`-Schlüssel `unterrichtsarchiv:v1`:
+Ein `localStorage`-Schlüssel `unterrichtsarchiv:v1`, Schema-Version 2. Version 1 wird beim
+Lesen migriert und einmal zurückgeschrieben.
 
 ```
 schemaVersion, letzterAbruf, kursAlias, klausurschnitt,
-eintraege[]: { id, kurs, datum, thema, hausaufgabe, position, ersterfasst, geaendert }
+eintraege[]:   { id, kurs, datum, thema, hausaufgabe, position, ersterfasst, geaendert }
+stundenplan:   { abgerufenAm, fenster: { von, bis }, tage: { "JJJJ-MM-TT": [ { stunde, fach, raum, status } ] } }
+kurszuordnung: { "<Fach im Stundenplan>": { kurs, quelle: "auto" | "manuell", bestaetigt } }
+sync:          { letzterLauf, letzterErfolg, letzterFehler: { zeit, art, text }, quelle }
+einstellungen: { wochenplan: { fensterTage, overrides }, freieTage, schulbeginn, altSchwelleTage,
+                 stundenplanStaleTage, startReiter, syncWarnungNachTagen }
 ```
 
 `id` ist `kurs|datum|position`. Schulmanager liefert keine Stundennummer, nur „Inhalt an
 diesem Tag". `position` ist deshalb eine laufende Nummer je Kurs und Tag in Lieferreihenfolge
 und wird nirgends angezeigt. Kursnamen werden roh gespeichert, ein Alias wirkt nur beim Anzeigen.
+
+Zwei Arten von Daten, zwei Regeln: `eintraege` ist das Archiv und schrumpft nie. `stundenplan`
+ist ein Cache; ein neuer Abruf ersetzt die Tage im abgerufenen Fenster vollständig, damit
+entfallene Stunden auch wieder verschwinden. Der Cache enthält keine Lehrkraft; `stunde` dient
+nur der Reihenfolge und wird nicht angezeigt.
+
+Der Export enthält Archiv, Alias, Klausurschnitte und Einstellungen, aber weder den
+Stundenplan-Cache noch den Sync-Status. Beim Import einer Export-Datei gewinnen bei den
+Einstellungen die lokalen Werte; freie Tage werden vereinigt.
 
 ## Merge-Regeln
 
@@ -111,6 +153,8 @@ Weiter offen:
 - Schlägt die Schüler-Zuordnung fehl, zeigt die Statusbox eine Diagnose: Storage-Schlüsselnamen,
   Feldnamen der Sitzungsdaten (nie Werte), ob ein Token da ist und welche API-Pfade die Seite
   selbst aufruft.
+- Der Stundenplan-Endpunkt ist nicht mitgeschnitten. Bis dahin arbeitet die Vorschau nur
+  abgeleitet und manuell.
 
 ## Rahmen
 

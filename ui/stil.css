@@ -261,15 +261,15 @@ main {
 
 .thema.leer { color: var(--leise); font-style: italic; }
 
+/* Hausaufgabe ist Inhalt, kein Nebentext: volle Schriftgröße und Textfarbe. */
 .ha {
   margin-top: 6px;
-  font-size: 14px;
-  color: var(--leise);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 
-.ha b { font-weight: 600; color: var(--tinte); }
+.ha b { font-weight: 650; }
 
 mark {
   background: var(--marker-bg);
@@ -335,3 +335,206 @@ mark {
   .werkzeuge .feld { flex: 1 1 auto; }
   .werkzeuge .feld input { flex: 1; }
 }
+
+/* Reiter Archiv | Vorschau */
+.reiter {
+  display: flex;
+  margin-top: 10px;
+  border-bottom: 1px solid var(--linie);
+}
+
+.reiter button {
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  margin-bottom: -1px;
+  background: transparent;
+  color: var(--leise);
+  font-weight: 600;
+}
+
+.reiter button[aria-pressed="true"] {
+  background: transparent;
+  color: var(--tinte);
+  border-bottom-color: var(--akzent);
+}
+
+select {
+  font: inherit;
+  color: inherit;
+  min-height: var(--tap);
+  padding: 6px 10px;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--karte);
+  max-width: 100%;
+}
+
+input[type="time"] {
+  font: inherit;
+  color: inherit;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--karte);
+}
+
+/* Vorschau */
+.vorschau {
+  padding: 12px 16px 40px;
+  max-width: 780px;
+}
+
+.vorschau-kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vorschau-titel { flex: 1; min-width: 0; text-align: center; }
+.vorschau-titel h2 { margin: 0; font-size: 20px; font-weight: 650; }
+.vorschau-titel .unterzeile { margin: 2px 0 0; color: var(--leise); font-size: 14px; }
+
+.pfeil {
+  width: var(--tap);
+  padding: 0;
+  font-size: 24px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.pfeil:disabled { opacity: .35; cursor: default; }
+
+.herkunft {
+  margin: 8px 0 0;
+  color: var(--leise);
+  font-size: 13px;
+  text-align: center;
+}
+
+.hinweis {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.hinweis.warn { background: var(--warn-bg); color: var(--warn-fg); }
+.hinweis.fehler { background: var(--fehler-bg); color: var(--fehler-fg); }
+.hinweis a { color: inherit; font-weight: 600; margin-left: 6px; white-space: nowrap; }
+
+.karte {
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--karte);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+}
+
+.karte-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.karte-kopf h3 { margin: 0; font-size: 17px; font-weight: 650; }
+
+.marke {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+}
+
+.marke.leise {
+  background: transparent;
+  color: var(--leise);
+  border: 1px solid var(--linie);
+  font-weight: 500;
+}
+
+/* Die Hausaufgabe ist der Grund für diese Ansicht: größte Schrift auf der Karte. */
+.karte-ha {
+  margin-top: 8px;
+  font-size: 17px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.karte-ha b { font-weight: 650; }
+
+.karte-thema {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.karte-thema.leer { color: var(--leise); font-style: italic; }
+
+.karte-meta { margin: 8px 0 0; color: var(--leise); font-size: 13px; }
+.karte-meta .alt { color: var(--warn-fg); }
+
+.karte .zeile-eingabe { margin-top: 8px; }
+
+.entfallen { margin: 14px 0 0; color: var(--leise); font-size: 14px; }
+.entfallen s { margin-right: 6px; }
+
+/* Einstellungen: Wochenplan und freie Tage */
+.wochenplan { display: grid; gap: 8px; }
+
+.wochenplan-tag {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 10px 12px;
+  background: var(--karte);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+}
+
+.wochenplan-tag .tag { font-weight: 650; padding-top: 7px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chips button { min-height: 36px; padding: 4px 12px; font-size: 14px; }
+.chips button.fest { background: var(--akzent); color: var(--akzent-text); border-color: var(--akzent); }
+.chips button.aus { text-decoration: line-through; color: var(--leise); }
+.chips button small { margin-left: 5px; font-size: 12px; opacity: .75; }
+.chips select { min-height: 36px; padding: 4px 8px; font-size: 14px; }
+
+.zeile-eingabe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.zeile-eingabe .feld { display: flex; align-items: center; gap: 6px; color: var(--leise); font-size: 14px; }
+
+.leer-hinweis .knoepfe a { display: inline-flex; align-items: center; }
+
+.knopfreihe.mitte { justify-content: center; }
+
+.frei-liste { display: grid; gap: 8px; }
+
+.frei-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 8px 8px 12px;
+  background: var(--karte);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+}
+
+.frei-zeile button { min-height: 36px; padding: 4px 12px; font-size: 14px; }
