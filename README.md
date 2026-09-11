@@ -87,23 +87,30 @@ Bekannte Grenze des Schlüssels: löscht die Lehrkraft den ersten von zwei Eintr
 Tages, rückt der zweite auf Position 1 (erscheint als geändert) und Position 2 bleibt als
 Altbestand stehen.
 
-## Offene Punkte (erst im echten Schulmanager-Tab prüfbar)
+## Stand der Prüfung im echten Schulmanager (2026-09-11)
 
-- Der Endpoint-Name `get-topics` für Unterrichtsinhalte ist vermutet; `get-homework` ist
-  belegt. Antwortet eine Teilanfrage nicht mit 200, nennt die Statusbox den Namen.
-- Die Schüler-Zuordnung (`associatedStudent`) liest das Lesezeichen zuerst aus den
-  Sitzungsdaten im Browser (Storage, Token-Nutzlast), ohne eigene Anfrage. Erst wenn dort
-  nichts steht, ruft es `/api/login-status` auf: zuerst per POST (so spricht die Seite auch
-  `/api/calls` an), bei 404 oder 405 einmal per GET. Stand der Live-Tests: die Antwort hat
-  die Form `{ isAuthenticated, user: { …, associatedStudent: { id, … } } }`, GET liefert
-  404, die Sitzungsdaten (Schlüssel `user`, `jwt`) enthalten keine Zuordnung, POST ist noch
-  unbestätigt. Schlägt alles fehl, zeigt die Statusbox eine Diagnose: Storage-Schlüsselnamen,
-  Feldnamen der Sitzungsdaten (nie Werte), ob ein Token da ist und welche API-Pfade die
-  Seite selbst aufruft. Bei mehreren Schülern fragt es nach.
-- Ob die Sitzung per Cookie oder per Token im Storage läuft, ist unbekannt; beides wird
-  mitgeschickt. 401 oder 403 → „Sitzung nicht erkannt“.
-- Blockt Schulmanager fremde Fenster (Cross-Origin-Opener-Policy), kommt kein „bereit“
-  an und der Download-Rückfall greift.
+Bestätigt:
+
+- `get-topics` und `get-homework` antworten beide mit 200 in einem Abruf (35 Datensätze,
+  nach dem Zusammenführen 30 Einträge). Antwortet eine Teilanfrage nicht mit 200, nennt die
+  Statusbox weiterhin den Namen.
+- `/api/login-status` antwortet per POST (Body `{}`), GET liefert 404. Die Antwort hat die
+  Form `{ isAuthenticated, user: { …, associatedStudent: { id, … } } }`. Die Sitzungsdaten im
+  Browser (Schlüssel `user`, `jwt`) enthalten keine Zuordnung, deshalb ist login-status der
+  reguläre Weg. Bei mehreren Schülern fragt das Lesezeichen nach.
+- Die Übergabe an den Viewer per postMessage funktioniert; Schulmanager blockt das geöffnete
+  Fenster nicht. Der Download-Rückfall bleibt für den Fall, dass sich das ändert.
+
+Weiter offen:
+
+- Ob der Server die Sitzung über das Cookie oder das Token im Storage erkennt, ist unbekannt.
+  Beides wird mitgeschickt und das reicht. 401 oder 403 → „Sitzung nicht erkannt“.
+- `bundleVersion` fand das Lesezeichen weder in der Seite noch im Speicher noch in den ersten
+  drei eigenen Skripten; der Rückfallwert `a6ef588fd2` wurde vom Server angenommen. Lehnt der
+  Server ihn nach einem Schulmanager-Update ab, meldet die Statusbox den HTTP-Fehler samt Wert.
+- Schlägt die Schüler-Zuordnung fehl, zeigt die Statusbox eine Diagnose: Storage-Schlüsselnamen,
+  Feldnamen der Sitzungsdaten (nie Werte), ob ein Token da ist und welche API-Pfade die Seite
+  selbst aufruft.
 
 ## Rahmen
 
