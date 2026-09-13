@@ -122,12 +122,14 @@ test("empfangErwartet: nur mit ?empfang, so wie das Lesezeichen den Viewer öffn
   assert.equal(empfangErwartet(null), false);
 });
 
-test("Lesezeichen: „Zum Unterrichtsarchiv“ öffnet die App im selben Tab (ohne ?empfang) und schließt den Hintergrund-Tab", () => {
+test("Lesezeichen: „Zum Unterrichtsarchiv“ öffnet die App im selben Tab (ohne ?empfang), schließt den Hintergrund-Tab und wechselt von selbst, wenn der Schulmanager vorn bleibt", () => {
   const src = readFileSync(new URL("../bookmarklet/src.js", import.meta.url), "utf8");
   assert.match(src, /zumArchiv\.href = VIEWER_URL;/);
   assert.doesNotMatch(src, /zumArchiv\.target/, "ein Link auf den benannten Tab zeigte am iPhone keine Reaktion");
   assert.match(src, /viewer\.close\(\);/);
   assert.match(src, /location\.assign\(VIEWER_URL\);/);
+  assert.match(src, /document\.visibilityState === "visible"\) \{\s*log\([^)]*\);\s*zumArchivGehen\(\);/);
+  assert.match(src, /if \(window\.name === "unterrichtsarchiv"\) window\.name = "";\s*try \{ viewer = window\.open\(/);
 });
 
 function jwtBauen(nutzlast) {

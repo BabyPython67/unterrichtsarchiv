@@ -15,11 +15,16 @@ Wie die App funktioniert, wie sie gebaut und geprüft wird. Für die Benutzung r
    neuen Tab, holt Inhalte, Hausaufgaben und Stundenplan mit der bestehenden Sitzung ab und
    schickt sie per `postMessage` an den Viewer. Oben rechts im Schulmanager-Tab erscheint eine
    Statusbox mit „Meldung kopieren“ für Fehlermeldungen. Bestätigt der Viewer den Empfang,
-   erscheint dort der Link „Zum Unterrichtsarchiv“. iOS-Safari lässt den neuen Tab im
-   Hintergrund, und ein Link auf das benannte Fenster zeigte am iPhone keine Reaktion
-   (2026-09-13). Der Link öffnet die App deshalb im Schulmanager-Tab selbst und schließt den
-   Tab, den das Lesezeichen geöffnet hat. Die Daten sind zu dem Zeitpunkt schon gespeichert.
-   Der Viewer wartet nur mit `?empfang=1` auf Daten, der Link öffnet ihn ohne diesen Zusatz.
+   erscheint dort der Link „Zum Unterrichtsarchiv“. Das Lesezeichen öffnet den Viewer im
+   Fenster namens `unterrichtsarchiv`. Gibt es diesen Tab noch vom letzten Mal, lädt iOS-Safari
+   den Viewer dort im Hintergrund, der Schulmanager bleibt vorn; ohne ihn kommt ein neuer Tab nach
+   vorn. Ein Link auf das benannte Fenster zeigte am iPhone keine Reaktion (2026-09-13). Der Link
+   öffnet die App deshalb im Schulmanager-Tab selbst und schließt den Tab, den das Lesezeichen
+   geöffnet hat. Ist der Schulmanager-Tab bei der Bestätigung noch sichtbar
+   (`document.visibilityState`), passiert das von selbst. Die Daten sind zu dem Zeitpunkt schon
+   gespeichert. Der Viewer wartet nur mit `?empfang=1` auf Daten, der Link öffnet ihn ohne diesen
+   Zusatz. Heißt der Schulmanager-Tab selbst `unterrichtsarchiv`, leert das Lesezeichen den Namen
+   vor dem Öffnen, sonst würde es sich selbst ersetzen.
 3. Kommt der Viewer nicht an die Daten (Popup blockiert, 15 s ohne Antwort), lädt das
    Lesezeichen stattdessen `unterricht-JJJJ-MM-TT.json` herunter. Diese Datei im Viewer unter
    Einstellungen → Daten → „Importieren“ einlesen. Dasselbe funktioniert mit Export-Dateien des
@@ -79,6 +84,18 @@ Nennt die Herkunft-Zeile denselben Abruf schon, entfällt die Zeile. Ist der let
 fehlgeschlagen, erscheint stattdessen ein roter Hinweis mit Link zum Schulmanager. Die Vorschau
 zeigt weder Stundennummer noch Uhrzeit; die Nummer aus dem Stundenplan bestimmt nur die
 Reihenfolge.
+
+**Lücken.** Je Kurs sucht `baueDigest` im gemessenen Stundenplan den letzten Tag vor dem
+gezeigten Tag, an dem der Kurs stattfand (ohne Entfall, „Nicht anzeigen“ und freie Tage). Ohne
+Uhrzeiten gilt der heutige Tag ab Unterrichtsbeginn als gehalten. Hat das Archiv für diesen oder
+einen späteren Tag keinen Eintrag, trägt die Karte die Marke „Letzte Stunde fehlt“. Die Ursache
+steht bewusst nicht dabei: Entweder hat die Lehrkraft nichts eingetragen, oder der Abruf war
+vorher. Lag die Stunde nach dem letzten Abruf (am selben Tag nur, wenn der Abruf vor
+Unterrichtsbeginn war), ersetzt ein gelber Hinweis „Seit dem letzten Abruf am … war Unterricht.“
+die leise Abrufzeile. Er und der rote Fehlerhinweis haben den Link zum Schulmanager und
+„Wie geht das?“, das eine Kurzanleitung zum Lesezeichen aufklappt (Schritt je Gerät nach
+User-Agent). Die Stand-Zeile oben zählt die gehaltenen Schulstunden seit dem letzten Abruf
+(`stundenSeitAbruf`); reicht der Stundenplan nicht bis heute, heißt es „mehr als“.
 
 ## Aufbau
 

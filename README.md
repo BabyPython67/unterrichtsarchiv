@@ -56,8 +56,8 @@ zeigt den aktuellen Stand, die Details kommen nach dem Antippen.
 1. Die [Lesezeichen-Seite](https://babypython67.github.io/unterrichtsarchiv/install.html) öffnen
    und der Anleitung für das eigene Gerät folgen (Computer, iPhone/iPad oder Android).
 2. Im Schulmanager einloggen.
-3. Dort das Lesezeichen antippen. Die App öffnet sich in einem eigenen Tab und übernimmt die Daten.
-   Bleibt der Schulmanager vorn, führt „Zum Unterrichtsarchiv“ in der Box oben rechts zur App.
+3. Dort das Lesezeichen antippen. Die App öffnet sich und übernimmt die Daten. Klappt der Wechsel
+   nicht, führt „Zum Unterrichtsarchiv“ in der Box oben rechts zur App.
 
 Die App holt nichts von selbst. Das Lesezeichen also ab und zu antippen, zum Beispiel einmal pro
 Woche. Was einmal im Archiv ist, bleibt dort, auch wenn es im Schulmanager später verschwindet.
@@ -80,6 +80,11 @@ Die App übernimmt nur, was Lehrkräfte im Schulmanager eintragen.
   auch im Archiv.
 
 Keine Hausaufgabe in der App heißt also nicht sicher, dass nichts auf ist.
+
+Die Vorschau gleicht deshalb mit dem Stundenplan ab. Hat die letzte Stunde eines Kurses keinen
+Eintrag, steht auf seiner Karte „Letzte Stunde fehlt“. War diese Stunde nach dem letzten Abruf,
+steht oben ein Hinweis: dann einfach das Lesezeichen erneut antippen. Oben in der App zeigt die
+Zeile mit dem Stand, wie viele Schulstunden seitdem waren.
 
 ## Daten
 

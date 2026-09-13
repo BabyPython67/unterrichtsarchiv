@@ -209,11 +209,12 @@ export function schultagSuchen(start, richtung, tagesplanFn, freieTage = [], max
   return null;
 }
 
+const uhrzeit = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
 /** Heute, wenn vor schulbeginn ("HH:MM"), sonst morgen; dann schultagSuchen vorwärts. */
 export function naechsterSchultag(jetzt, tagesplanFn, freieTage = [], schulbeginn = "08:00") {
   const heute = isoDatum(jetzt);
-  const uhr = `${String(jetzt.getHours()).padStart(2, "0")}:${String(jetzt.getMinutes()).padStart(2, "0")}`;
-  const start = uhr < schulbeginn ? heute : datumPlus(heute, 1);
+  const start = uhrzeit(jetzt) < schulbeginn ? heute : datumPlus(heute, 1);
   return schultagSuchen(start, 1, tagesplanFn, freieTage);
 }
 
@@ -231,6 +232,74 @@ export function letzteStunde(eintraege, kurs, vorDatum) {
   if (!best) return null;
   const liste = eintraege.filter((e) => e.kurs === kurs && e.datum === best).sort((a, b) => a.position - b.position);
   return { datum: best, eintraege: liste };
+}
+
+// ---------------------------------------------------------------------------
+// Lücken: Unterricht laut Stundenplan, zu dem das Archiv (noch) keinen Eintrag hat
+// ---------------------------------------------------------------------------
+//
+// Ohne Uhrzeiten der Stunden gilt: Ab Unterrichtsbeginn zählt der ganze heutige Tag als gehalten.
+// Grundlage sind nur gemessene Tage (Stundenplan-Fenster), mit Entfall, „Nicht anzeigen“,
+// freien Tagen und Overrides so, wie die Vorschau sie zeigt.
+
+/** Letzter Tag, dessen Unterricht schon begonnen hat: heute ab Schulbeginn, sonst gestern. */
+function gehaltenBis(jetzt, schulbeginn) {
+  const heute = isoDatum(jetzt);
+  return uhrzeit(jetzt) < schulbeginn ? datumPlus(heute, -1) : heute;
+}
+
+/**
+ * Jüngster bekannter Abruf in Ortszeit → { tag, vorBeginn } oder null. Genommen wird der späteste
+ * Zeitstempel aus letzterAbruf, sync.letzterErfolg und stundenplan.abgerufenAm. vorBeginn: Der
+ * Abruf lag vor Unterrichtsbeginn, der Unterricht dieses Tages kam also erst danach.
+ */
+export function abrufStand(daten, schulbeginn = "08:00") {
+  const zeiten = [daten.letzterAbruf, daten.sync && daten.sync.letzterErfolg, daten.stundenplan && daten.stundenplan.abgerufenAm]
+    .filter((x) => typeof x === "string" && x)
+    .map((x) => (/^\d{4}-\d{2}-\d{2}$/.test(x) ? mittag(x) : new Date(x)))
+    .filter((d) => !Number.isNaN(d.getTime()));
+  if (!zeiten.length) return null;
+  const d = new Date(Math.max(...zeiten.map((z) => z.getTime())));
+  return { tag: isoDatum(d), vorBeginn: uhrzeit(d) < schulbeginn };
+}
+
+const nachAbruf = (tag, abruf) => !!abruf && (tag > abruf.tag || (tag === abruf.tag && abruf.vorBeginn));
+
+/** Gemessene Tage aus dem Cache bis einschließlich `bis`, ohne freie Tage, neueste zuerst. */
+function gehalteneTage(daten, planFuer, bis, freieTage) {
+  return Object.keys((daten.stundenplan && daten.stundenplan.tage) || {})
+    .filter((t) => t <= bis && !istFrei(t, freieTage))
+    .sort()
+    .reverse()
+    .map((t) => planFuer(t))
+    .filter((p) => p.herkunft === "gemessen");
+}
+
+/**
+ * Schulstunden laut Stundenplan nach dem letzten Abruf bis jetzt. Entfall und „Nicht anzeigen“
+ * zählen nicht, eine Doppelstunde zählt zweimal. → { anzahl, mehr } oder null, wenn keine.
+ * mehr: Der Stundenplan reicht nicht bis heute, es waren also vermutlich noch mehr.
+ */
+export function stundenSeitAbruf(jetzt, daten) {
+  const einst = mitStandard(daten.einstellungen);
+  const abruf = abrufStand(daten, einst.schulbeginn);
+  if (!abruf) return null;
+  const bis = gehaltenBis(jetzt, einst.schulbeginn);
+  const planFuer = planFunktion(daten, isoDatum(jetzt));
+  let anzahl = 0;
+  for (const plan of gehalteneTage(daten, planFuer, bis, einst.freieTage)) {
+    if (!nachAbruf(plan.datum, abruf)) continue;
+    for (const k of plan.kurse) anzahl += Array.isArray(k.stunden) && k.stunden.length ? k.stunden.length : 1;
+  }
+  if (!anzahl) return null;
+  const f = daten.stundenplan.fenster || {};
+  return { anzahl, mehr: !f.bis || bis > f.bis };
+}
+
+/** "seitdem 5 Schulstunden", "seitdem mehr als 5 Schulstunden"; ohne Wert "". */
+export function stundenSeitAbrufText(r) {
+  if (!r) return "";
+  return `seitdem ${r.mehr ? "mehr als " : ""}${r.anzahl} ${r.anzahl === 1 ? "Schulstunde" : "Schulstunden"}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -256,8 +325,11 @@ export function tagLabel(datum, heute) {
  * daten: { eintraege, kursAlias, stundenplan, kurszuordnung, einstellungen, datum? }
  * datum erzwingt einen Tag (Pfeilnavigation); sonst naechsterSchultag.
  * → { datum, label, wochentag, herkunft, angepasst, kurse: [{ kurs, name, fach, thema, hausaufgabe,
- *      letztesDatum, vorTagen, alt, sicherheit, status, stunden, zuordnungFehlt }],
- *    entfallen: [{ kurs, fach, stunden, name }], anzahlHA }
+ *      letztesDatum, vorTagen, alt, sicherheit, status, stunden, zuordnungFehlt, luecke }],
+ *    entfallen: [{ kurs, fach, stunden, name }], anzahlHA, luecke }
+ * kurse[].luecke: { datum, nachAbruf } oder null. Die letzte gehaltene Stunde des Kurses laut
+ * Stundenplan (datum) hat keinen Eintrag im Archiv; nachAbruf: sie lag nach dem letzten Abruf.
+ * luecke (Digest): { abrufTag }, wenn mindestens ein Kurs eine Lücke nach dem Abruf hat, sonst null.
  * Reihenfolge: gemessen wie im Stundenplan (erste Stunde oben); sonst Kurse mit Hausaufgabe
  * zuerst (stabil). Mitteilung und Viewer zeigen dieselbe Reihenfolge.
  */
@@ -269,14 +341,22 @@ export function baueDigest(jetzt, daten) {
   const datum = daten.datum || naechsterSchultag(jetzt, planFuer, einst.freieTage, einst.schulbeginn);
   if (!datum) {
     return { datum: null, label: `Kein Schultag in den nächsten ${SCHULTAGE_VORAUS} Tagen`, wochentag: null,
-      herkunft: null, angepasst: false, kurse: [], entfallen: [], anzahlHA: 0 };
+      herkunft: null, angepasst: false, kurse: [], entfallen: [], anzahlHA: 0, luecke: null };
   }
   const plan = planFuer(datum);
+  const abruf = abrufStand(daten, einst.schulbeginn);
+  const zuletztGehalten = new Map();   // Kurs → letzter gehaltener Tag vor dem gezeigten Tag
+  for (const p of gehalteneTage(daten, planFuer, gehaltenBis(jetzt, einst.schulbeginn), einst.freieTage)) {
+    if (p.datum >= datum) continue;
+    for (const k of p.kurse) if (k.kurs && !zuletztGehalten.has(k.kurs)) zuletztGehalten.set(k.kurs, p.datum);
+  }
   const kurse = plan.kurse.map((k) => {
     const letzte = k.kurs ? letzteStunde(eintraege, k.kurs, datum) : null;
     const thema = letzte ? letzte.eintraege.map((e) => e.thema).filter(Boolean).join("\n") : "";
     const hausaufgabe = letzte ? letzte.eintraege.map((e) => e.hausaufgabe).filter(Boolean).join("\n") : "";
     const vorTagen = letzte ? tageZwischen(letzte.datum, heute) : null;
+    const gehalten = k.kurs ? zuletztGehalten.get(k.kurs) : undefined;
+    const luecke = gehalten && (!letzte || letzte.datum < gehalten) ? { datum: gehalten, nachAbruf: nachAbruf(gehalten, abruf) } : null;
     return {
       kurs: k.kurs,
       name: k.kurs ? anzeigename(k.kurs, daten.kursAlias || {}) : k.fach,
@@ -290,6 +370,7 @@ export function baueDigest(jetzt, daten) {
       alt: vorTagen !== null && vorTagen > einst.altSchwelleTage,
       thema,
       hausaufgabe,
+      luecke,
     };
   });
   // Gemessen: Reihenfolge des Stundenplans, erste Stunde oben. Sonst gibt es keine echte
@@ -305,6 +386,7 @@ export function baueDigest(jetzt, daten) {
     kurse: geordnet,
     entfallen: plan.entfallen.map((k) => ({ kurs: k.kurs, fach: k.fach, stunden: k.stunden, name: k.kurs ? anzeigename(k.kurs, daten.kursAlias || {}) : k.fach })),
     anzahlHA: mitHa.length,
+    luecke: abruf && kurse.some((k) => k.luecke && k.luecke.nachAbruf) ? { abrufTag: abruf.tag } : null,
   };
 }
 
@@ -348,6 +430,12 @@ export function digestText(digest) {
   if (ohne.length) zeilen.push(`Ohne Hausaufgabe: ${ohne.join(", ")}`);
   if (digest.entfallen.length) zeilen.push(`Entfällt: ${digest.entfallen.map((k) => k.name).join(", ")}`);
   return zeilen.join("\n");
+}
+
+/** Satz für den Hinweis in der Vorschau, wenn eine fehlende Stunde nach dem letzten Abruf lag; sonst null. */
+export function lueckeText(digest) {
+  if (!digest || !digest.luecke) return null;
+  return `Seit dem letzten Abruf am ${wochentagLesbar(digest.luecke.abrufTag)} war Unterricht.`;
 }
 
 // ---------------------------------------------------------------------------

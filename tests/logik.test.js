@@ -7,6 +7,7 @@ import {
   tagesplan, ermittleWochenplan, naechsterSchultag, schultagSuchen, letzteStunde, baueDigest,
   digestKopfzeile, tagesablauf, digestText, stundenplanUebernehmen, leererStundenplan, planFunktion, kurszuordnungErgaenzen,
   istFrei, istWochenende, datumPlus, tageZwischen, wochentagKuerzel, syncStatus, syncZeile, herkunftZeile, mitStandard,
+  abrufStand, stundenSeitAbruf, stundenSeitAbrufText, lueckeText,
 } from "../kern/logik.js";
 import { leererBestand, pruefeBestand, exportText } from "../kern/speicher.js";
 import { importieren } from "../kern/importieren.js";
@@ -360,6 +361,97 @@ test("baueDigest: Tag, an dem alles entfällt, erscheint in der Vorschau; Kopfze
 // ---------------------------------------------------------------------------
 // Statuszeilen
 // ---------------------------------------------------------------------------
+
+// Lücken. Abruf Mo 14.09. 18:00 (nach Schulbeginn), Stundenplan Mo–Mi. Archiv: Mathe vom 14.09.,
+// Englisch nur vom 10.09., Deutsch vom 11.09. Sport ist auf „Nicht anzeigen“ gestellt.
+function lueckeDaten(abgerufen = new Date(2026, 8, 14, 18, 0).toISOString()) {
+  const b = leererBestand();
+  b.kurszuordnung = { ...zuordnung, SP: { kurs: null, quelle: "manuell", bestaetigt: true } };
+  b.stundenplan = {
+    abgerufenAm: abgerufen,
+    fenster: { von: "2026-09-14", bis: "2026-09-20" },
+    tage: {
+      "2026-09-14": [{ stunde: 1, fach: "M LK", status: "normal" }, { stunde: 2, fach: "E", status: "normal" }],
+      "2026-09-15": [{ stunde: 1, fach: "E", status: "normal" }, { stunde: 3, fach: "D", status: "entfall" }, { stunde: 4, fach: "SP", status: "normal" }],
+      "2026-09-16": [
+        { stunde: 1, fach: "M LK", status: "normal" }, { stunde: 2, fach: "M LK", status: "normal" },
+        { stunde: 3, fach: "E", status: "normal" }, { stunde: 4, fach: "D", status: "normal" },
+      ],
+    },
+  };
+  b.letzterAbruf = abgerufen;
+  b.sync.letzterErfolg = abgerufen;
+  b.eintraege = [e("Mathematik", "2026-09-14", "Ableitung"), e("Englisch", "2026-09-10", "Reading"), e("Deutsch", "2026-09-11", "Faust")];
+  return b;
+}
+const luecken = (digest) => Object.fromEntries(digest.kurse.map((k) => [k.kurs, k.luecke]));
+
+test("abrufStand: spätester Zeitstempel in Ortszeit, vor Schulbeginn markiert; reines Datum, Müll, nichts", () => {
+  const b = leererBestand();
+  assert.equal(abrufStand(b), null);
+  b.letzterAbruf = new Date(2026, 8, 12, 7, 30).toISOString();
+  b.sync.letzterErfolg = new Date(2026, 8, 11, 19, 0).toISOString();
+  b.stundenplan.abgerufenAm = "kaputt";
+  assert.deepEqual(abrufStand(b), { tag: "2026-09-12", vorBeginn: true });
+  assert.deepEqual(abrufStand(b, "07:00"), { tag: "2026-09-12", vorBeginn: false });
+  assert.deepEqual(abrufStand({ letzterAbruf: "2026-09-13" }), { tag: "2026-09-13", vorBeginn: false });
+  assert.equal(abrufStand({ letzterAbruf: new Date(2026, 8, 14, 0, 30).toISOString() }).tag, "2026-09-14", "Ortszeit, nicht UTC");
+});
+
+test("baueDigest: letzte Stunde laut Stundenplan ohne Eintrag -> luecke; lag sie nach dem Abruf -> Hinweis", () => {
+  const d = baueDigest(new Date(2026, 8, 15, 18, 0), lueckeDaten());   // Di 18:00 -> Mi 16.09.
+  assert.equal(d.datum, "2026-09-16");
+  const l = luecken(d);
+  assert.equal(l.Mathematik, null, "Stunde am 14.09. hat einen Eintrag");
+  assert.deepEqual(l.Englisch, { datum: "2026-09-15", nachAbruf: true });
+  assert.equal(l.Deutsch, null, "am 15.09. entfallen, davor kein Deutsch im Stundenplan");
+  assert.deepEqual(d.luecke, { abrufTag: "2026-09-14" });
+  assert.equal(lueckeText(d), "Seit dem letzten Abruf am Mo 14.09. war Unterricht.");
+});
+
+test("baueDigest: fehlende Stunde vor dem Abruf -> nur luecke, kein Hinweis; Abruf vor Schulbeginn zählt den Tag mit", () => {
+  const spaet = baueDigest(new Date(2026, 8, 14, 20, 0), lueckeDaten());   // Mo 20:00 -> Di 15.09.
+  assert.equal(spaet.datum, "2026-09-15");
+  assert.deepEqual(luecken(spaet).Englisch, { datum: "2026-09-14", nachAbruf: false });
+  assert.equal(spaet.luecke, null);
+  assert.equal(lueckeText(spaet), null);
+  const frueh = baueDigest(new Date(2026, 8, 14, 20, 0), lueckeDaten(new Date(2026, 8, 14, 7, 0).toISOString()));
+  assert.deepEqual(luecken(frueh).Englisch, { datum: "2026-09-14", nachAbruf: true });
+  assert.deepEqual(frueh.luecke, { abrufTag: "2026-09-14" });
+});
+
+test("baueDigest: künftige Stunden und freie Tage erzeugen keine Lücke", () => {
+  // Mo 07:00, vor Schulbeginn, per Pfeil auf Mi 16.09.: Englisch am 15.09. kommt erst noch
+  const vorher = baueDigest(new Date(2026, 8, 14, 7, 0), { ...lueckeDaten(), datum: "2026-09-16" });
+  assert.equal(luecken(vorher).Englisch, null);
+  assert.equal(vorher.luecke, null);
+  const b = lueckeDaten();
+  b.einstellungen.freieTage = ["2026-09-15"];
+  const frei = baueDigest(new Date(2026, 8, 15, 18, 0), b);
+  assert.deepEqual(luecken(frei).Englisch, { datum: "2026-09-14", nachAbruf: false });
+  assert.equal(frei.luecke, null);
+});
+
+test("stundenSeitAbruf: gehaltene Schulstunden nach dem Abruf, ohne Entfall, „Nicht anzeigen“ und freie Tage", () => {
+  const b = lueckeDaten();
+  // Mi 20:00: Di Englisch (1), Mi Mathe-Doppelstunde (2), Englisch (1), Deutsch (1)
+  assert.deepEqual(stundenSeitAbruf(new Date(2026, 8, 16, 20, 0), b), { anzahl: 5, mehr: false });
+  assert.equal(stundenSeitAbrufText({ anzahl: 5, mehr: false }), "seitdem 5 Schulstunden");
+  // Mi 07:00: der Mittwoch zählt noch nicht
+  assert.deepEqual(stundenSeitAbruf(new Date(2026, 8, 16, 7, 0), b), { anzahl: 1, mehr: false });
+  assert.equal(stundenSeitAbrufText({ anzahl: 1, mehr: false }), "seitdem 1 Schulstunde");
+  // Mo 21.09.: der Stundenplan endet am 20.09., es waren wohl mehr
+  const spaeter = stundenSeitAbruf(new Date(2026, 8, 21, 9, 0), b);
+  assert.deepEqual(spaeter, { anzahl: 5, mehr: true });
+  assert.equal(stundenSeitAbrufText(spaeter), "seitdem mehr als 5 Schulstunden");
+  // Abend des Abrufs: nichts; Abruf vor Schulbeginn: der Tag zählt
+  assert.equal(stundenSeitAbruf(new Date(2026, 8, 14, 20, 0), b), null);
+  assert.equal(stundenSeitAbrufText(null), "");
+  assert.deepEqual(stundenSeitAbruf(new Date(2026, 8, 14, 20, 0), lueckeDaten(new Date(2026, 8, 14, 7, 0).toISOString())), { anzahl: 2, mehr: false });
+  b.einstellungen.freieTage = ["2026-09-15"];
+  assert.deepEqual(stundenSeitAbruf(new Date(2026, 8, 16, 20, 0), b), { anzahl: 4, mehr: false });
+  assert.equal(stundenSeitAbruf(new Date(2026, 8, 16, 20, 0), leererBestand()), null);
+});
 
 test("herkunftZeile und syncStatus liefern Klartext mit Alter", () => {
   const jetzt = new Date(2026, 8, 15, 20, 0);

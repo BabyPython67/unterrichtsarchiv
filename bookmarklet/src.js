@@ -53,9 +53,14 @@
     p.then(() => log("(kopiert)"), () => window.prompt("Zum Kopieren markieren:", t));
   });
   kopieren.hidden = true;
-  // Link zur App, erscheint nach der Bestätigung (die Daten sind dann gespeichert). iOS-Safari öffnet
-  // den Viewer im Hintergrund, und ein Link auf den benannten Tab zeigte am iPhone keine Reaktion.
-  // Deshalb wird dieser Tab selbst zur App; den Hintergrund-Tab schließen, damit sie nicht doppelt offen ist.
+  // Link zur App, erscheint nach der Bestätigung (die Daten sind dann gespeichert). Ist der App-Tab vom
+  // letzten Mal noch offen, lädt iOS-Safari den Viewer dort im Hintergrund, und ein Link auf den
+  // benannten Tab zeigte am iPhone keine Reaktion. Deshalb wird dieser Tab selbst zur App; den
+  // Hintergrund-Tab schließen, damit sie nicht doppelt offen ist.
+  const zumArchivGehen = () => {
+    try { if (viewer && !viewer.closed) viewer.close(); } catch (e) { /* bleibt offen */ }
+    location.assign(VIEWER_URL);
+  };
   const zumArchiv = document.createElement("a");
   zumArchiv.href = VIEWER_URL;
   zumArchiv.textContent = "Zum Unterrichtsarchiv";
@@ -63,8 +68,7 @@
   zumArchiv.addEventListener("click", (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
-    try { if (viewer && !viewer.closed) viewer.close(); } catch (e) { /* bleibt offen */ }
-    location.assign(VIEWER_URL);
+    zumArchivGehen();
   });
   leiste.append(kopieren, knopf("Schließen", () => box.remove()));
   box.append(titel, protokoll, leiste);
@@ -78,6 +82,8 @@
   };
 
   // Viewer SOFORT öffnen (synchron im Klick), sonst blockt der Popupblocker nach dem Abruf.
+  // Trägt dieser Tab selbst den Namen (früher vom Lesezeichen geöffnet), würde window.open ihn ersetzen.
+  if (window.name === "unterrichtsarchiv") window.name = "";
   try { viewer = window.open(VIEWER_URL + "?empfang=1", "unterrichtsarchiv"); } catch (e) { viewer = null; }
   log(viewer ? "Viewer geöffnet, hole Daten …" : "Neues Fenster wurde blockiert, die Daten kommen als Datei.");
 
@@ -89,6 +95,12 @@
     if (ev.data.typ === TYP.empfangen) {
       log("Viewer: " + ev.data.neu + " neu, " + ev.data.geaendert + " geändert, " + ev.data.unveraendert + " unverändert.");
       leiste.prepend(zumArchiv);
+      // Noch sichtbar heißt: Der Viewer kam nicht nach vorn (am iPhone, wenn sein Tab schon offen war).
+      // Dann von selbst wechseln; der Link bleibt als Ausweg stehen.
+      if (document.visibilityState === "visible") {
+        log("Öffne das Unterrichtsarchiv …");
+        zumArchivGehen();
+      }
     }
   });
   const warte = (ms) => new Promise((r) => setTimeout(() => r(false), ms));

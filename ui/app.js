@@ -5,7 +5,10 @@
 import { lesen, schreiben, loeschen, defektSichern, exportText, exportDateiname, leererBestand } from "../kern/speicher.js";
 import { importieren } from "../kern/importieren.js";
 import { filtern, gruppieren, kurseZaehlen, kurseSortiert, anzeigename, zerlegen, wochentag, datumLesbar, WOCHENTAGE } from "../kern/filtern.js";
-import { baueDigest, digestKopfzeile, tagesablauf, herkunftZeile, syncZeile, planFunktion, schultagSuchen, datumPlus, isoDatum, vorTagenText, ermittleWochenplan, mitStandard } from "../kern/logik.js";
+import {
+  baueDigest, digestKopfzeile, tagesablauf, herkunftZeile, syncZeile, planFunktion, schultagSuchen, datumPlus, isoDatum, vorTagenText,
+  ermittleWochenplan, mitStandard, lueckeText, stundenSeitAbruf, stundenSeitAbrufText,
+} from "../kern/logik.js";
 import {
   kurseZusammenfassung, vorschauZusammenfassung, wochenplanZusammenfassung, freieTageZusammenfassung,
   faecherImStundenplan, faecherZusammenfassung, datenZusammenfassung,
@@ -54,6 +57,7 @@ const zustand = {
   vorher: "archiv",       // wohin „Zurück“ aus den Einstellungen führt
   seite: [],              // Unterseite der Einstellungen, siehe renderEinstellungen
   vorschauDatum: null,    // null = nächster Schultag automatisch, sonst per Pfeil gewählter Tag
+  abrufHilfeOffen: false, // Kurzanleitung zum Lesezeichen im Hinweis der Vorschau aufgeklappt
   meldung: null,
 };
 
@@ -149,7 +153,11 @@ function renderStand() {
     teile.push("Noch keine Einträge");
   }
   if (letzterAbruf) teile.push(`Stand ${zeitLesbar(letzterAbruf)}`);
-  $("stand").textContent = teile.join(" · ");
+  const stand = $("stand");
+  stand.textContent = teile.join(" · ");
+  // Unterricht seit dem Stand laut Stundenplan: sagt, ob das Archiv hinterherhinkt.
+  const seit = letzterAbruf ? stundenSeitAbrufText(stundenSeitAbruf(new Date(), zustand.bestand)) : "";
+  if (seit) stand.append(" · ", el("span", { class: "alt", text: seit }));
 }
 
 /** ISO-Zeitstempel in Ortszeit, z. B. "11.09.2026, 00:12". Reine Tagesdaten laufen über datumLesbar. */
@@ -203,6 +211,44 @@ function leerHinweis() {
       el("li", { text: "Dieser Viewer öffnet sich und übernimmt die Einträge. Klappt das Öffnen nicht, lädt das Lesezeichen eine Datei herunter, die du hier importierst." }),
     ),
     el("div", { class: "knoepfe" }, el("button", { type: "button", onclick: () => dateiQuelle.oeffnen() }, "Datei importieren")),
+  );
+}
+
+/** Wie man das Lesezeichen auf diesem Gerät aufruft (iPad meldet sich wie ein Mac mit Touch). */
+function lesezeichenSchritt() {
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) {
+    return "In die Adressleiste tippen und bei den Favoriten dein Lesezeichen antippen.";
+  }
+  if (/Android/.test(ua)) return "Den Namen deines Lesezeichens in die Adressleiste tippen und es auswählen.";
+  return "In der Lesezeichenleiste auf dein Lesezeichen klicken.";
+}
+
+/** Hinweis in der Vorschau: Text, Link zum Schulmanager und eine zugeklappte Kurzanleitung zum Lesezeichen. */
+function abrufHinweis(art, text) {
+  const hilfe = el("div", { class: "abruf-hilfe", id: "abruf-hilfe", hidden: !zustand.abrufHilfeOffen },
+    el("ol", {},
+      el("li", { text: "Schulmanager öffnen und einloggen." }),
+      el("li", { text: lesezeichenSchritt() }),
+      el("li", { text: "Danach öffnet sich diese App mit den neuen Einträgen." }),
+    ),
+    el("p", {}, "Noch kein Lesezeichen angelegt? ", el("a", { href: "./install.html" }, "Anleitung")),
+  );
+  const knopf = el("button", {
+    type: "button", class: "textknopf", "aria-expanded": String(zustand.abrufHilfeOffen), "aria-controls": "abruf-hilfe",
+    onclick: () => {
+      zustand.abrufHilfeOffen = !zustand.abrufHilfeOffen;
+      knopf.setAttribute("aria-expanded", String(zustand.abrufHilfeOffen));
+      hilfe.hidden = !zustand.abrufHilfeOffen;
+    },
+  }, "Wie geht das?");
+  return el("div", { class: `hinweis ${art}` },
+    el("p", { text }),
+    el("div", { class: "aktionen" },
+      el("a", { href: `${SCHULMANAGER_ORIGIN}/`, target: "_blank", rel: "noopener" }, "Schulmanager öffnen"),
+      knopf,
+    ),
+    hilfe,
   );
 }
 
@@ -461,11 +507,14 @@ function renderVorschau() {
   ));
   box.append(el("p", { class: "herkunft", text: herkunftZeile(digest, bestand.stundenplan, jetzt, einst) }));
 
-  // Abrufstand leise unter der Herkunft; eine Box nur, wenn der letzte Abruf wirklich fehlschlug.
+  // Abrufstand leise unter der Herkunft. Eine Box statt der Zeile, wenn der letzte Abruf fehlschlug
+  // oder seitdem Unterricht war, zu dem ein Eintrag fehlt.
   const sync = syncZeile(digest, bestand.stundenplan, bestand.sync, jetzt, einst);
+  const luecke = lueckeText(digest);
   if (sync && sync.art === "fehler") {
-    box.append(el("div", { class: "hinweis fehler" },
-      sync.text, el("a", { href: `${SCHULMANAGER_ORIGIN}/`, target: "_blank", rel: "noopener" }, "Schulmanager öffnen")));
+    box.append(abrufHinweis("fehler", sync.text));
+  } else if (luecke) {
+    box.append(abrufHinweis("warn", luecke));
   } else if (sync) {
     box.append(el("p", { class: `herkunft${sync.art === "warn" ? " alt" : ""}`, text: sync.text }));
   }
@@ -487,6 +536,7 @@ function renderVorschau() {
 function kursKarte(k) {
   const kopf = el("div", { class: "karte-kopf" }, el("h3", { text: k.name }));
   if (k.status === "vertretung") kopf.append(el("span", { class: "marke", text: "Vertretung" }));
+  if (k.luecke) kopf.append(el("span", { class: "marke", text: "Letzte Stunde fehlt" }));
   if (k.sicherheit === "unsicher") kopf.append(el("span", { class: "marke leise", text: "unsicher" }));
   const karte = el("article", { class: "karte" }, kopf);
   if (k.hausaufgabe) karte.append(el("div", { class: "karte-ha" }, el("b", { text: "Hausaufgabe: " }), k.hausaufgabe));

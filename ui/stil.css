@@ -494,6 +494,7 @@ input[type="time"] {
 
 .herkunft + .herkunft { margin-top: 2px; }
 .herkunft.alt { color: var(--warn-fg); }
+.stand .alt { color: var(--warn-fg); }
 
 .hinweis {
   margin: 12px 0 0;
@@ -505,6 +506,22 @@ input[type="time"] {
 .hinweis.warn { background: var(--warn-bg); color: var(--warn-fg); }
 .hinweis.fehler { background: var(--fehler-bg); color: var(--fehler-fg); }
 .hinweis a { color: inherit; font-weight: 600; margin-left: 6px; white-space: nowrap; }
+.hinweis > p { margin: 0; }
+
+/* Link zum Schulmanager und „Wie geht das?“ nebeneinander unter dem Hinweistext */
+.hinweis .aktionen { display: flex; flex-wrap: wrap; align-items: center; gap: 0 18px; margin-top: 2px; }
+.hinweis .aktionen a { margin-left: 0; padding: 6px 0; }
+.hinweis .textknopf {
+  min-height: 0;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  font-weight: 600;
+  text-decoration: underline;
+}
+.abruf-hilfe ol { margin: 2px 0 0; padding-left: 20px; }
+.abruf-hilfe li { margin: 2px 0; }
+.abruf-hilfe p { margin: 6px 0 0; }
 
 /* Hinweis in der iOS-Web-App vom Home-Bildschirm (eigener Speicher, bekommt keine Daten) */
 .app-hinweis { margin: 12px 16px 0; }
