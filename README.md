@@ -52,7 +52,9 @@ Woher die Vorschau weiß, welche Kurse an einem Tag sind, steht in der Zeile unt
    Kurse stehen in der Reihenfolge des Tages, entfallene Stunden durchgestrichen, Vertretungen
    markiert. Fächer aus dem Stundenplan werden den Kursen im Archiv zugeordnet: gleiche Namen
    automatisch, sonst fragt die Karte nach. „Nicht anzeigen“ blendet ein Fach in der Vorschau
-   aus (Einstellungen → Vorschau → Fächer im Stundenplan).
+   aus (Einstellungen → Vorschau → Fächer im Stundenplan). Klausuren und andere Sondertermine
+   fremder Kurse, die Schulmanager der ganzen Klasse mitliefert (dort grün), lässt der Viewer
+   weg; Termine der eigenen Kurse bleiben.
 2. **Abgeleitet**: aus den Einträgen der letzten 56 Tage, also welcher Kurs an welchem Wochentag
    regelmäßig Einträge hatte. Unsichere Treffer sind markiert.
 3. **Manuell**: unter Einstellungen → Vorschau → Wochenplan lässt sich je Wochentag ein Kurs
@@ -139,7 +141,7 @@ Bekannte Grenze des Schlüssels: löscht die Lehrkraft den ersten von zwei Eintr
 Tages, rückt der zweite auf Position 1 (erscheint als geändert) und Position 2 bleibt als
 Altbestand stehen.
 
-## Stand der Prüfung im echten Schulmanager (2026-09-11)
+## Stand der Prüfung im echten Schulmanager (2026-09-13)
 
 Bestätigt:
 
@@ -152,6 +154,10 @@ Bestätigt:
   reguläre Weg. Bei mehreren Schülern fragt das Lesezeichen nach.
 - Die Übergabe an den Viewer per postMessage funktioniert; Schulmanager blockt das geöffnete
   Fenster nicht. Der Download-Rückfall bleibt für den Fall, dass sich das ändert.
+- `schedules/get-actual-lessons` mit `student`, `start`, `end` antwortet mit 200 (2026-09-13,
+  66 Datensätze für zwei Wochen). Sondertermine fremder Lerngruppen kommen mit und werden beim
+  Umrechnen verworfen: ihre Gruppen-IDs kommen in keiner regulären oder entfallenden Stunde vor.
+  Antwortet die Teilanfrage nicht mit 200, meldet der Viewer es und arbeitet ohne Stundenplan weiter.
 
 Weiter offen:
 
@@ -163,11 +169,6 @@ Weiter offen:
 - Schlägt die Schüler-Zuordnung fehl, zeigt die Statusbox eine Diagnose: Storage-Schlüsselnamen,
   Feldnamen der Sitzungsdaten (nie Werte), ob ein Token da ist und welche API-Pfade die Seite
   selbst aufruft.
-- Der Stundenplan-Abruf ist aus einer mitgeschnittenen Antwort abgeleitet
-  (`referenz/antwort-stundenplan.json`, anonymisiert). Die Form der Anfrage
-  (`schedules/get-actual-lessons` mit `student`, `start`, `end`) ist noch nicht im echten
-  Schulmanager bestätigt. Antwortet die Teilanfrage nicht mit 200, meldet der Viewer es und
-  arbeitet ohne Stundenplan weiter.
 
 ## Rahmen
 

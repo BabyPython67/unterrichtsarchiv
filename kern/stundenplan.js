@@ -11,6 +11,10 @@
 // und Kommentare werden verworfen (Regel: keine Namen, nichts Fremdes im Cache). Als Fach
 // gilt subject.name, weil das Klassenbuch (get-topics) denselben Namen liefert und die
 // Zuordnung zum Archiv-Kurs dann von selbst passt; fehlt der Name, das Kurskürzel (subjectLabel).
+//
+// Schulmanager liefert Sondertermine anderer Lerngruppen derselben Klasse mit, z. B. die Klausur
+// eines Parallelkurses (type specialLesson, comment „Examen", im Schulmanager grün). Die fallen
+// weg. Die Gruppen-IDs dienen nur diesem Vergleich und landen nicht im Cache.
 
 export const STUNDENPLAN_MODUL = "schedules";
 export const STUNDENPLAN_ENDPOINT = "get-actual-lessons";
@@ -55,6 +59,31 @@ function stunde(l) {
   return Number.isInteger(n) && n >= 0 ? n : 0;
 }
 
+function gruppenIds(d) {
+  return (Array.isArray(d.studentGroups) ? d.studentGroups : [])
+    .map((g) => (istObjekt(g) ? g.id : null))
+    .filter((id) => id !== null && id !== undefined);
+}
+
+// Eigene Lerngruppen: aus allen Stunden außer Sonderterminen, entfallende eingeschlossen.
+function eigeneGruppen(lektionen) {
+  const ids = new Set();
+  for (const l of lektionen) {
+    if (!istLektion(l) || l.type === "specialLesson") continue;
+    for (const id of gruppenIds(lektionsDaten(l))) ids.add(id);
+  }
+  return ids;
+}
+
+// Sondertermin, dessen Gruppen alle nicht zum eigenen Plan gehören. Ein Termin der eigenen
+// Gruppe (etwa die eigene Klausur) bleibt, ebenso einer ohne Gruppe. Gibt es keine eigenen
+// Gruppen zum Vergleich, bleibt alles stehen.
+function fremderSondertermin(l, eigene) {
+  if (l.type !== "specialLesson" || !eigene.size) return false;
+  const ids = gruppenIds(lektionsDaten(l));
+  return ids.length > 0 && !ids.some((id) => eigene.has(id));
+}
+
 /**
  * @param lektionen   results[i].data der Teilantwort
  * @param fenster     { von, bis } wie angefragt; fehlt es, gilt der Bereich der gelieferten Daten
@@ -66,8 +95,10 @@ function stunde(l) {
 export function stundenplanAusLektionen(lektionen, fenster, abgerufenAm) {
   const tage = {};
   let anzahl = 0;
-  for (const l of Array.isArray(lektionen) ? lektionen : []) {
-    if (!istLektion(l)) continue;
+  const liste = Array.isArray(lektionen) ? lektionen : [];
+  const eigene = eigeneGruppen(liste);
+  for (const l of liste) {
+    if (!istLektion(l) || fremderSondertermin(l, eigene)) continue;
     const fach = fachName(l);
     if (!fach) continue;
     const d = lektionsDaten(l);

@@ -3,7 +3,7 @@
 // ein Deploy mit geänderter Shell bekommt einen neuen Cache-Namen, alte Caches werden beim
 // Aktivieren gelöscht, damit niemand auf einer alten Version festhängt.
 
-const VERSION = "faa6c2d3d8bc";
+const VERSION = "d780735dbe9e";
 const CACHE = "unterrichtsarchiv-shell-" + VERSION;
 const PRAEFIX = "unterrichtsarchiv-shell-";
 // Diese beiden werden bei Verbindung immer frisch geholt (Cache nur als Rückfall offline):

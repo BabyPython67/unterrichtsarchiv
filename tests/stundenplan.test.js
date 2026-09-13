@@ -32,10 +32,10 @@ test("fachName: subject.name, sonst Kurskürzel, sonst Abkürzung, sonst null", 
 
 test("stundenplanAusLektionen: 5 Tage sortiert, je Tag nach Stundennummer, Fach = Name aus dem Klassenbuch", () => {
   const p = stundenplanAusLektionen(lektionen(), FENSTER, ABGERUFEN);
-  assert.deepEqual({ von: p.von, bis: p.bis, abgerufenAm: p.abgerufenAm, anzahl: p.anzahl }, { ...FENSTER, abgerufenAm: ABGERUFEN, anzahl: 34 });
+  // 34 Lektionen, davon 2 Klausuren fremder Kurse (PsG3 am 14.09., Biologie am 16.09.)
+  assert.deepEqual({ von: p.von, bis: p.bis, abgerufenAm: p.abgerufenAm, anzahl: p.anzahl }, { ...FENSTER, abgerufenAm: ABGERUFEN, anzahl: 32 });
   assert.deepEqual(Object.keys(p.tage), ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"]);
   assert.deepEqual(p.tage["2026-09-14"], [
-    { stunde: 2, fach: "PsG3", raum: "R06", status: "normal" },       // Sondertermin parallel zur Sportstunde
     { stunde: 2, fach: "Sport", raum: "R13", status: "normal" },
     { stunde: 3, fach: "Mathematik", raum: "R07", status: "normal" },
     { stunde: 4, fach: "Mathematik", raum: "R07", status: "normal" },
@@ -45,8 +45,24 @@ test("stundenplanAusLektionen: 5 Tage sortiert, je Tag nach Stundennummer, Fach 
   assert.deepEqual(p.tage["2026-09-17"].map((s) => `${s.stunde} ${s.fach}`),
     ["1 Sport", "2 Sport", "3 Kunst", "4 Mathematik", "5 Englisch", "6 Englisch", "8 SwZ6", "9 SwZ6"]);
   assert.deepEqual(p.tage["2026-09-16"].map((s) => `${s.stunde} ${s.fach}`),
-    ["1 Physik", "2 Physik", "3 Deutsch", "4 Biologie", "4 PsG1", "5 Geschichte", "6 Geschichte"]);
+    ["1 Physik", "2 Physik", "3 Deutsch", "4 PsG1", "5 Geschichte", "6 Geschichte"]);
   assert.equal(p.tage["2026-09-15"][0].fach, "Lateinisch, Beginn in Jahrgangsklasse 7");
+});
+
+test("stundenplanAusLektionen: Sondertermin einer fremden Lerngruppe fällt weg, der eigenen Gruppe bleibt", () => {
+  const l = (number, type, fach, gruppen) => ({ date: "2026-09-14", classHour: { number }, type, actualLesson: { subject: { name: fach }, studentGroups: gruppen.map((id) => ({ id })) } });
+  const eingabe = [
+    l("1", "regularLesson", "Mathematik", [1]),
+    l("2", "specialLesson", "Biologie", [9]),    // Klausur eines anderen Kurses -> weg
+    l("3", "specialLesson", "Mathematik", [1]),  // Termin der eigenen Gruppe -> bleibt
+    l("4", "specialLesson", "Projekttag", []),   // ohne Gruppe nicht beurteilbar -> bleibt
+    { date: "2026-09-14", classHour: { number: "5" }, type: "cancelledLesson", isCancelled: true, originalLessons: [{ subject: { name: "Kunst" }, studentGroups: [{ id: 2 }] }] },
+    l("6", "specialLesson", "Kunst", [2, 7]),    // eigene Gruppe nur aus der entfallenden Stunde bekannt -> bleibt
+  ];
+  assert.deepEqual(stundenplanAusLektionen(eingabe, null, null).tage["2026-09-14"].map((s) => `${s.stunde} ${s.fach}`),
+    ["1 Mathematik", "3 Mathematik", "4 Projekttag", "5 Kunst", "6 Kunst"]);
+  // Nur Sondertermine, also keine eigenen Gruppen zum Vergleich: nichts wird weggelassen
+  assert.equal(stundenplanAusLektionen([l("2", "specialLesson", "Biologie", [9])], null, null).anzahl, 1);
 });
 
 test("stundenplanAusLektionen: nur Stunde, Fach, Raum, Status — keine Lehrkraft, keine IDs, kein Kommentar", () => {
