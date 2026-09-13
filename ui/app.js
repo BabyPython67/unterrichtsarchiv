@@ -5,7 +5,7 @@
 import { lesen, schreiben, loeschen, defektSichern, exportText, exportDateiname, leererBestand } from "../kern/speicher.js";
 import { importieren } from "../kern/importieren.js";
 import { filtern, gruppieren, kurseZaehlen, kurseSortiert, anzeigename, zerlegen, wochentag, datumLesbar, WOCHENTAGE } from "../kern/filtern.js";
-import { baueDigest, digestKopfzeile, herkunftZeile, syncZeile, planFunktion, schultagSuchen, datumPlus, isoDatum, vorTagenText, ermittleWochenplan, mitStandard } from "../kern/logik.js";
+import { baueDigest, digestKopfzeile, tagesablauf, herkunftZeile, syncZeile, planFunktion, schultagSuchen, datumPlus, isoDatum, vorTagenText, ermittleWochenplan, mitStandard } from "../kern/logik.js";
 import {
   kurseZusammenfassung, vorschauZusammenfassung, wochenplanZusammenfassung, freieTageZusammenfassung,
   faecherImStundenplan, faecherZusammenfassung, datenZusammenfassung,
@@ -42,13 +42,15 @@ function el(tag, attrs = {}, ...kinder) {
 let storage = null;
 try { storage = window.localStorage; } catch { storage = null; }
 
-const FILTER_LEER = () => ({ kurs: null, abDatum: "", suche: "", nurHausaufgabe: false, seitKlausur: false });
+// zeitraum ("alles" | "klausur" | "ab") ist nur Zustand der Oberfläche; filtern() liest seitKlausur und abDatum.
+const FILTER_LEER = () => ({ kurs: null, abDatum: "", suche: "", nurHausaufgabe: false, seitKlausur: false, zeitraum: "alles" });
 
 const zustand = {
   bestand: leererBestand(),
   speicherFehler: null,
   filter: FILTER_LEER(),
-  ansicht: "archiv",      // "archiv" | "vorschau" | "einstellungen"
+  filterOffen: false,     // Filterbereich im Archiv aufgeklappt
+  ansicht: "archiv",     // "archiv" | "vorschau" | "einstellungen"
   vorher: "archiv",       // wohin „Zurück“ aus den Einstellungen führt
   seite: [],              // Unterseite der Einstellungen, siehe renderEinstellungen
   vorschauDatum: null,    // null = nächster Schultag automatisch, sonst per Pfeil gewählter Tag
@@ -124,8 +126,7 @@ function render() {
     renderVorschau();
   } else {
     renderKurse();
-    renderWerkzeuge();
-    renderKlausur();
+    renderFilter();
     renderListe();
   }
 }
@@ -186,40 +187,6 @@ function leerHinweis() {
 
 // ---- Archiv ----------------------------------------------------------------
 
-/** Zeile unter den Werkzeugen, nur bei eingeschaltetem „Seit letzter Klausur“. Datumsfeld nur mit gewähltem Kurs. */
-function renderKlausur() {
-  const box = $("klausur");
-  box.textContent = "";
-  const { filter } = zustand;
-  const { klausurschnitt, kursAlias, eintraege } = zustand.bestand;
-  $("seit-klausur").setAttribute("aria-pressed", String(filter.seitKlausur));
-  box.hidden = !filter.seitKlausur || !eintraege.length;
-  if (box.hidden) return;
-
-  if (filter.kurs) {
-    const datum = klausurschnitt[filter.kurs] || "";
-    const name = anzeigename(filter.kurs, kursAlias);
-    const eingabe = el("input", { type: "date", value: datum, "aria-label": `Klausurdatum für ${name}` });
-    eingabe.addEventListener("change", () => {
-      if (eingabe.value) klausurschnitt[filter.kurs] = eingabe.value;
-      else delete klausurschnitt[filter.kurs];
-      speichern();
-      renderKlausur();
-      renderListe();
-    });
-    box.append(
-      el("label", { class: "feld" }, el("span", { text: `${name}: Klausur am` }), eingabe),
-      el("p", { class: "info", text: datum
-        ? `Zeigt alles ab dem ${datumLesbar(datum)}.`
-        : "Noch kein Klausurdatum für diesen Kurs. Datum eintragen, dann wirkt der Schalter." }),
-    );
-  } else {
-    const alle = Object.keys(kurseZaehlen(eintraege));
-    const mitDatum = alle.filter((k) => klausurschnitt[k]).length;
-    box.append(el("p", { class: "info", text: `Je Kurs ab dem eingetragenen Klausurdatum. ${mitDatum} von ${alle.length} Kursen haben eins. Kurs antippen, um es zu setzen.` }));
-  }
-}
-
 function renderKurse() {
   const leiste = $("kursleiste");
   leiste.textContent = "";
@@ -230,7 +197,7 @@ function renderKurse() {
     "aria-label": `${name}, ${n} ${n === 1 ? "Eintrag" : "Einträge"}`,
     onclick: () => {
       zustand.filter.kurs = zustand.filter.kurs === kurs ? null : kurs;
-      renderKurse(); renderKlausur(); renderListe();
+      renderKurse(); renderFilter(); renderListe();
     },
   }, el("span", { text: name }), el("span", { class: "n", text: String(n) }));
   leiste.append(chip(null, "Alle", eintraege.length));
@@ -239,12 +206,147 @@ function renderKurse() {
   }
 }
 
-function renderWerkzeuge() {
+// ---- Archiv: Suche und Filter ----------------------------------------------
+//
+// In der Leiste stehen nur Suche und der Filter-Knopf. Zeitraum und „Mit Hausaufgabe“ liegen im
+// Bereich darunter, der sich per Knopf öffnet. Ist er zu, zeigen Marken, welche Filter wirken;
+// Antippen einer Marke nimmt den Filter weg.
+
+/** Filter aus dem Bereich, die gerade wirken. Suche und Kurs sieht man ohnehin, sie zählen nicht. */
+function aktiveFilter() {
   const { filter } = zustand;
-  if ($("suche").value !== filter.suche) $("suche").value = filter.suche;
-  if ($("ab").value !== filter.abDatum) $("ab").value = filter.abDatum;
-  $("nur-ha").setAttribute("aria-pressed", String(filter.nurHausaufgabe));
-  $("seit-klausur").setAttribute("aria-pressed", String(filter.seitKlausur));
+  const { klausurschnitt } = zustand.bestand;
+  const liste = [];
+  if (filter.zeitraum === "klausur") {
+    const datum = filter.kurs ? klausurschnitt[filter.kurs] : "";
+    liste.push({ text: datum ? `Seit Klausur am ${datumLesbar(datum)}` : "Seit letzter Klausur", weg: () => zeitraumSetzen("alles") });
+  } else if (filter.zeitraum === "ab" && filter.abDatum) {
+    liste.push({ text: `Ab ${datumLesbar(filter.abDatum)}`, weg: () => zeitraumSetzen("alles") });
+  }
+  if (filter.nurHausaufgabe) liste.push({ text: "Mit Hausaufgabe", weg: () => hausaufgabeSetzen(false) });
+  return liste;
+}
+
+function zeitraumSetzen(wert) {
+  const { filter } = zustand;
+  filter.zeitraum = wert;
+  filter.seitKlausur = wert === "klausur";
+  if (wert !== "ab") filter.abDatum = "";
+  renderFilter();
+  renderListe();
+}
+
+function hausaufgabeSetzen(an) {
+  zustand.filter.nurHausaufgabe = an;
+  renderFilter();
+  renderListe();
+}
+
+/** Knöpfe nebeneinander, der gewählte ist gedrückt. optionen: [[wert, text], …] */
+function segment(label, optionen, aktuell, waehlen) {
+  return el("div", { class: "segment", role: "group", "aria-label": label },
+    optionen.map(([wert, text]) => el("button", {
+      type: "button", "aria-pressed": String(aktuell === wert), onclick: () => waehlen(wert),
+    }, text)));
+}
+
+function renderFilter() {
+  if ($("suche").value !== zustand.filter.suche) $("suche").value = zustand.filter.suche;
+  renderFilterKnopf();
+  renderFilterBereich();
+  renderFilterMarken();
+}
+
+function renderFilterKnopf() {
+  const n = aktiveFilter().length;
+  const knopf = $("filter-knopf");
+  knopf.textContent = "";
+  knopf.append("Filter");
+  if (n) knopf.append(el("span", { class: "n", "aria-hidden": "true", text: String(n) }));
+  knopf.setAttribute("aria-label", n ? `Filter, ${n} aktiv` : "Filter");
+  knopf.setAttribute("aria-expanded", String(zustand.filterOffen));
+}
+
+function renderFilterMarken() {
+  const box = $("filter-aktiv");
+  box.textContent = "";
+  const marken = aktiveFilter();
+  box.hidden = zustand.filterOffen || !marken.length;
+  for (const m of marken) {
+    box.append(el("button", { type: "button", "aria-label": `${m.text}, Filter entfernen`, onclick: m.weg },
+      m.text, el("span", { class: "x", "aria-hidden": "true", text: "×" })));
+  }
+}
+
+function renderFilterBereich() {
+  const box = $("filter");
+  box.textContent = "";
+  const { filter } = zustand;
+  box.hidden = !zustand.filterOffen;
+  if (box.hidden) return;
+
+  box.append(el("div", { class: "filter-zeile" },
+    el("span", { class: "filter-titel", text: "Zeitraum" }),
+    segment("Zeitraum", [["alles", "Alles"], ["klausur", "Seit Klausur"], ["ab", "Ab Datum"]], filter.zeitraum, zeitraumSetzen)));
+  if (filter.zeitraum === "ab") box.append(abDatumFeld());
+  if (filter.zeitraum === "klausur") box.append(klausurFeld());
+
+  box.append(el("div", { class: "filter-zeile" },
+    el("span", { class: "filter-titel", text: "Einträge" }),
+    segment("Einträge", [[false, "Alle"], [true, "Mit Hausaufgabe"]], filter.nurHausaufgabe, hausaufgabeSetzen)));
+
+  const zuruecksetzen = () => {
+    Object.assign(filter, { zeitraum: "alles", abDatum: "", seitKlausur: false, nurHausaufgabe: false });
+    renderFilter();
+    renderListe();
+  };
+  box.append(el("div", { class: "knopfreihe" },
+    el("button", { type: "button", onclick: () => { zustand.filterOffen = false; renderFilter(); $("filter-knopf").focus(); } }, "Fertig"),
+    filter.zeitraum !== "alles" || filter.nurHausaufgabe ? el("button", { type: "button", onclick: zuruecksetzen }, "Zurücksetzen") : null));
+}
+
+/** Datumsfeld unter „Ab Datum“. Aktualisiert nur Knopf und Liste, damit der Fokus im Feld bleibt. */
+function abDatumFeld() {
+  const { filter } = zustand;
+  const eingabe = el("input", { type: "date", value: filter.abDatum, "aria-label": "Ab Datum" });
+  eingabe.addEventListener("change", () => {
+    filter.abDatum = eingabe.value;
+    renderFilterKnopf();
+    renderListe();
+  });
+  return el("div", { class: "filter-unter" }, el("label", { class: "feld" }, el("span", { text: "Ab" }), eingabe));
+}
+
+/** Unter „Seit Klausur“: mit gewähltem Kurs dessen Klausurdatum (dasselbe wie unter Einstellungen → Kurse), sonst der Stand. */
+function klausurFeld() {
+  const { filter } = zustand;
+  const { klausurschnitt, kursAlias, eintraege } = zustand.bestand;
+  const box = el("div", { class: "filter-unter" });
+  if (!filter.kurs) {
+    const alle = Object.keys(kurseZaehlen(eintraege));
+    const mitDatum = alle.filter((k) => klausurschnitt[k]).length;
+    box.append(el("p", { class: "info", text: `Je Kurs ab dem eingetragenen Klausurdatum. ${mitDatum} von ${alle.length} Kursen haben eins. Kurs oben antippen, um es zu setzen.` }));
+    return box;
+  }
+  const kurs = filter.kurs;
+  const name = anzeigename(kurs, kursAlias);
+  const info = el("p", { class: "info" });
+  const infoSetzen = () => {
+    info.textContent = klausurschnitt[kurs]
+      ? `Zeigt Einträge ab dem ${datumLesbar(klausurschnitt[kurs])}.`
+      : "Noch kein Klausurdatum für diesen Kurs. Datum eintragen, dann wirkt der Filter.";
+  };
+  const eingabe = el("input", { type: "date", value: klausurschnitt[kurs] || "", "aria-label": `Klausurdatum für ${name}` });
+  eingabe.addEventListener("change", () => {
+    if (eingabe.value) klausurschnitt[kurs] = eingabe.value;
+    else delete klausurschnitt[kurs];
+    speichern();
+    infoSetzen();
+    renderListe();
+  });
+  infoSetzen();
+  box.append(el("label", { class: "feld" }, el("span", { text: `${name}: Klausur am` }), eingabe), info);
+  return box;
 }
 
 function hervorheben(text, begriff) {
@@ -267,7 +369,9 @@ function renderListe() {
 
   const treffer = filtern(bestand.eintraege, filter, bestand.klausurschnitt);
   if (!treffer.length) {
-    ausgabe.append(el("p", { class: "leer-hinweis", text: "Keine Einträge für diese Filter. Zeitraum weiter zurücksetzen oder nach einem anderen Wort suchen." }));
+    ausgabe.append(el("div", { class: "leer-hinweis" },
+      el("p", { text: "Keine Einträge für diese Auswahl." }),
+      el("div", { class: "knoepfe" }, el("button", { type: "button", onclick: () => { zustand.filter = FILTER_LEER(); render(); } }, "Alles zurücksetzen"))));
     return;
   }
 
@@ -353,9 +457,9 @@ function renderVorschau() {
   if (!digest.kurse.length) {
     box.append(el("p", { class: "leer-hinweis", text: "Kein Unterricht an diesem Tag." }));
   }
-  for (const k of digest.kurse) box.append(k.zuordnungFehlt ? zuordnungKarte(k) : kursKarte(k));
-  if (digest.entfallen.length) {
-    box.append(el("p", { class: "entfallen" }, "Entfällt: ", digest.entfallen.map((k, i) => [i ? ", " : null, el("s", { text: k.name })])));
+  // Entfall als eigene Karte an der Stelle im Tag, wo der Kurs gewesen wäre.
+  for (const { art, kurs: k } of tagesablauf(digest)) {
+    box.append(art === "entfall" ? entfallKarte(k) : k.zuordnungFehlt ? zuordnungKarte(k) : kursKarte(k));
   }
 }
 
@@ -374,6 +478,12 @@ function kursKarte(k) {
     karte.append(el("p", { class: "karte-meta", text: "Noch kein Eintrag im Archiv" }));
   }
   return karte;
+}
+
+/** Entfallender Kurs: kompakt, aber farbig, damit er beim Überfliegen auffällt. */
+function entfallKarte(k) {
+  return el("article", { class: "karte entfall" },
+    el("div", { class: "karte-kopf" }, el("h3", {}, el("s", { text: k.name })), el("span", { class: "marke entfall", text: "Entfällt" })));
 }
 
 /**
@@ -530,7 +640,7 @@ function seiteKurs(box, kurs) {
     speichern();
   });
   box.append(el("label", { class: "einst-feld" }, el("span", { text: "Letzte Klausur" }), klausur));
-  box.append(el("p", { text: "Mit „Seit letzter Klausur“ zeigt das Archiv diesen Kurs ab dem Datum." }));
+  box.append(el("p", { text: "Mit Filter → Zeitraum „Seit Klausur“ zeigt das Archiv diesen Kurs ab dem Datum." }));
 }
 
 function seiteVorschau(box) {
@@ -680,6 +790,7 @@ function archivLoeschen() {
   if (storage) loeschen(storage);
   zustand.bestand = leererBestand();
   zustand.filter = FILTER_LEER();
+  zustand.filterOffen = false;
   zustand.vorschauDatum = null;
   zustand.ansicht = "archiv";
   zustand.vorher = "archiv";
@@ -702,19 +813,7 @@ function verdrahten() {
   $("reiter-archiv").addEventListener("click", () => ansichtWechseln("archiv"));
   $("reiter-vorschau").addEventListener("click", () => { zustand.vorschauDatum = null; ansichtWechseln("vorschau"); });
   $("suche").addEventListener("input", () => { zustand.filter.suche = $("suche").value; renderListe(); });
-  $("ab").addEventListener("change", () => { zustand.filter.abDatum = $("ab").value; renderListe(); });
-  $("nur-ha").addEventListener("click", () => {
-    zustand.filter.nurHausaufgabe = !zustand.filter.nurHausaufgabe;
-    renderWerkzeuge(); renderListe();
-  });
-  $("seit-klausur").addEventListener("click", () => {
-    zustand.filter.seitKlausur = !zustand.filter.seitKlausur;
-    renderKlausur(); renderListe();
-  });
-  $("reset").addEventListener("click", () => {
-    zustand.filter = FILTER_LEER();
-    render();
-  });
+  $("filter-knopf").addEventListener("click", () => { zustand.filterOffen = !zustand.filterOffen; renderFilter(); });
 
   const callbacks = {
     onDaten: datenVerarbeiten,

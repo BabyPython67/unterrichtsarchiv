@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   tagesplan, ermittleWochenplan, naechsterSchultag, schultagSuchen, letzteStunde, baueDigest,
-  digestKopfzeile, digestText, stundenplanUebernehmen, leererStundenplan, planFunktion, kurszuordnungErgaenzen,
+  digestKopfzeile, tagesablauf, digestText, stundenplanUebernehmen, leererStundenplan, planFunktion, kurszuordnungErgaenzen,
   istFrei, istWochenende, datumPlus, tageZwischen, wochentagKuerzel, syncStatus, syncZeile, herkunftZeile, mitStandard,
 } from "../kern/logik.js";
 import { leererBestand, pruefeBestand, exportText } from "../kern/speicher.js";
@@ -102,6 +102,7 @@ test("tagesplan: entfallende Doppelstunde steht nur einmal in entfallen, mit bei
   assert.deepEqual(p.kurse.map((k) => k.kurs), ["Mathematik"]);
   const d = baueDigest(new Date(2026, 8, 13, 20, 0), { eintraege: [], stundenplan: plan, kurszuordnung: zuordnung, datum: "2026-09-14" });
   assert.match(digestText(d), /^Entfällt: Kunst$/m);
+  assert.equal(digestKopfzeile(d), "1 Kurs · 0 Hausaufgaben · 1 entfällt");
 });
 
 test("tagesplan 4: Override aus schlägt einen gemessenen Kurs, fix ergänzt einen", () => {
@@ -323,6 +324,26 @@ test("baueDigest: heute vor Schulbeginn, festes Datum per Pfeilnavigation, Entfa
   assert.match(digestText(fest), /Entfällt: Deutsch/);
   assert.equal(fest.kurse[0].status, "vertretung");
   assert.equal(fest.kurse[0].thema, "Reading");
+});
+
+test("tagesablauf: Entfall steht an der Stelle seiner ersten Stunde, fest gesetzte Kurse ohne Stunde am Ende", () => {
+  const plan = { abgerufenAm: "2026-09-13T18:00:00.000Z", fenster: { von: "2026-09-14", bis: "2026-09-14" }, tage: { "2026-09-14": [
+    { stunde: 1, fach: "D", status: "entfall" },
+    { stunde: 2, fach: "M LK", status: "normal" },
+    { stunde: 3, fach: "M LK", status: "normal" },
+    { stunde: 4, fach: "E", status: "entfall" },
+    { stunde: 5, fach: "PH", status: "normal" },
+  ] } };
+  const einstellungen = { wochenplan: { overrides: { Mo: { Geschichte: "fix" } } } };
+  const d = baueDigest(new Date(2026, 8, 13, 20, 0),
+    { eintraege: [], stundenplan: plan, kurszuordnung: zuordnung, einstellungen, datum: "2026-09-14" });
+  assert.deepEqual(tagesablauf(d).map((x) => [x.art, x.kurs.name]), [
+    ["entfall", "Deutsch"], ["kurs", "Mathematik"], ["entfall", "Englisch"], ["kurs", "PH"], ["kurs", "Geschichte"],
+  ]);
+  assert.equal(digestKopfzeile(d), "3 Kurse · 0 Hausaufgaben · 2 entfallen");
+  // Ohne Entfall bleibt die Reihenfolge der Kurse unverändert.
+  const ohne = baueDigest(new Date(2026, 8, 14, 20, 0), digestDaten());
+  assert.deepEqual(tagesablauf(ohne).map((x) => x.kurs.name), ohne.kurse.map((k) => k.name));
 });
 
 // ---------------------------------------------------------------------------

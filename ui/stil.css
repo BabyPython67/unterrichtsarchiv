@@ -145,25 +145,35 @@ a { color: var(--akzent); }
 .meldung .text ul { margin: 6px 0 0; padding-left: 18px; }
 .meldung button { min-height: 32px; padding: 4px 10px; background: transparent; border-color: currentColor; color: inherit; }
 
-/* Seit letzter Klausur: Zeile unter den Werkzeugen, nur wenn der Schalter an ist */
-.klausur {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 14px;
-  padding: 10px 16px;
-  background: var(--akzent-weich);
+/* Filterbereich unter Suche und Filter-Knopf, nur aufgeklappt sichtbar */
+.filter {
+  display: grid;
+  gap: 12px;
+  padding: 12px 16px 14px;
+  background: var(--karte);
   border-bottom: 1px solid var(--linie);
 }
 
-.klausur .info {
-  margin: 0;
-  color: var(--leise);
+.filter-zeile { display: flex; align-items: center; gap: 6px 12px; }
+.filter-titel { flex: 0 0 72px; color: var(--leise); font-size: 14px; }
+.filter-unter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding-left: 84px; }
+.filter .feld { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--leise); }
+.filter .feld input { color: var(--tinte); }
+.filter .info { margin: 0; color: var(--leise); font-size: 14px; flex: 1 1 220px; }
+.filter .knopfreihe { margin: 0; }
+
+/* Wirkende Filter bei zugeklapptem Bereich; Antippen nimmt den Filter weg */
+.filter-aktiv { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px 0; }
+
+.filter-aktiv button {
+  min-height: 36px;
+  padding: 4px 10px 4px 12px;
   font-size: 14px;
-  flex: 1 1 220px;
+  background: var(--akzent-weich);
+  border-color: var(--akzent-weich);
 }
 
-.klausur .feld { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.filter-aktiv .x { margin-left: 8px; color: var(--leise); }
 
 /* Kursleiste */
 .kurse {
@@ -188,21 +198,35 @@ a { color: var(--akzent); }
 
 .kurse button[aria-pressed="true"] .n { color: inherit; opacity: .8; }
 
-/* Werkzeuge */
+/* Werkzeuge: nur Suche und Filter-Knopf in einer Zeile, bleibt beim Scrollen oben */
 .werkzeuge {
   position: sticky;
   top: 0;
   z-index: 5;
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
   padding: 10px 16px;
   background: var(--papier);
   border-bottom: 1px solid var(--linie);
 }
 
-.werkzeuge input[type="search"] { flex: 1 1 200px; }
-.werkzeuge .feld { display: flex; align-items: center; gap: 6px; color: var(--leise); font-size: 14px; }
+.werkzeuge input[type="search"] { flex: 1 1 auto; }
+.werkzeuge button { flex: 0 0 auto; }
+.werkzeuge button[aria-expanded="true"] { background: var(--akzent-weich); border-color: var(--akzent); }
+
+.werkzeuge .n {
+  display: inline-block;
+  min-width: 20px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--akzent);
+  color: var(--akzent-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+}
 
 /* Liste */
 main {
@@ -385,10 +409,8 @@ button.einst-zeile:hover, a.einst-zeile:hover { background: var(--papier); }
   .eintrag { grid-template-columns: 1fr; gap: 2px; }
   .wann { padding-top: 0; }
   .kopf h1 { font-size: 20px; }
-  /* Drei Zeilen Werkzeuge würden auf dem Handy dauerhaft ein Drittel des Displays belegen. */
-  .werkzeuge { position: static; }
-  .werkzeuge .feld { flex: 1 1 auto; }
-  .werkzeuge .feld input { flex: 1; }
+  .filter-zeile { display: grid; gap: 4px; justify-items: start; }
+  .filter-unter { padding-left: 0; }
 }
 
 /* Reiter Archiv | Vorschau */
@@ -543,7 +565,11 @@ input[type="time"] {
 
 .karte .zeile-eingabe { margin-top: 8px; }
 
-.entfallen { margin: 14px 0 0; color: var(--leise); font-size: 14px; }
+/* Entfall: eigene Karte an der Stelle der Stunde, neutral wie jede Karte, nur Schrift und Durchstrich rot */
+.karte.entfall { padding: 10px 14px; }
+.karte.entfall h3 { color: var(--gefahr); }
+.karte.entfall s { text-decoration-thickness: 2px; }
+.marke.entfall { background: transparent; color: var(--gefahr); border: 1px solid var(--linie); }
 
 /* Einstellungen: Wochenplan und freie Tage */
 .wochenplan { display: grid; gap: 8px; }

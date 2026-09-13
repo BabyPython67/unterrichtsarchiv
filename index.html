@@ -38,13 +38,11 @@
 
     <div class="werkzeuge" id="werkzeuge">
       <input type="search" id="suche" placeholder="Suchen, z. B. Ableitung" autocomplete="off" aria-label="Suche">
-      <label class="feld"><span>ab</span><input type="date" id="ab" aria-label="Ab Datum"></label>
-      <button type="button" id="nur-ha" aria-pressed="false">nur mit Hausaufgabe</button>
-      <button type="button" id="seit-klausur" aria-pressed="false">Seit letzter Klausur</button>
-      <button type="button" id="reset">Zurücksetzen</button>
+      <button type="button" id="filter-knopf" aria-expanded="false" aria-controls="filter">Filter</button>
     </div>
 
-    <section class="klausur" id="klausur" aria-label="Seit letzter Klausur" hidden></section>
+    <section class="filter" id="filter" aria-label="Filter" hidden></section>
+    <div class="filter-aktiv" id="filter-aktiv" hidden></div>
 
     <main id="ausgabe"></main>
   </div>

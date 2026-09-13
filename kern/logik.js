@@ -255,7 +255,8 @@ export function tagLabel(datum, heute) {
  * daten: { eintraege, kursAlias, stundenplan, kurszuordnung, einstellungen, datum? }
  * datum erzwingt einen Tag (Pfeilnavigation); sonst naechsterSchultag.
  * → { datum, label, wochentag, herkunft, angepasst, kurse: [{ kurs, name, fach, thema, hausaufgabe,
- *      letztesDatum, vorTagen, alt, sicherheit, status, stunden, zuordnungFehlt }], entfallen, anzahlHA }
+ *      letztesDatum, vorTagen, alt, sicherheit, status, stunden, zuordnungFehlt }],
+ *    entfallen: [{ kurs, fach, stunden, name }], anzahlHA }
  * Reihenfolge: gemessen wie im Stundenplan (erste Stunde oben); sonst Kurse mit Hausaufgabe
  * zuerst (stabil). Mitteilung und Viewer zeigen dieselbe Reihenfolge.
  */
@@ -301,17 +302,36 @@ export function baueDigest(jetzt, daten) {
     herkunft: plan.herkunft,
     angepasst: plan.angepasst,
     kurse: geordnet,
-    entfallen: plan.entfallen.map((k) => ({ kurs: k.kurs, fach: k.fach, name: k.kurs ? anzeigename(k.kurs, daten.kursAlias || {}) : k.fach })),
+    entfallen: plan.entfallen.map((k) => ({ kurs: k.kurs, fach: k.fach, stunden: k.stunden, name: k.kurs ? anzeigename(k.kurs, daten.kursAlias || {}) : k.fach })),
     anzahlHA: mitHa.length,
   };
 }
 
-/** Zweite Zeile unter dem Datum: "5 Kurse · 2 Hausaufgaben". */
+/** Zweite Zeile unter dem Datum: "5 Kurse · 2 Hausaufgaben", bei Entfall dazu "· 1 entfällt". */
 export function digestKopfzeile(digest) {
   if (!digest.datum) return "";
   const n = digest.kurse.length;
   const h = digest.anzahlHA;
-  return `${n} ${n === 1 ? "Kurs" : "Kurse"} · ${h} ${h === 1 ? "Hausaufgabe" : "Hausaufgaben"}`;
+  const e = digest.entfallen.length;
+  const teile = [`${n} ${n === 1 ? "Kurs" : "Kurse"}`, `${h} ${h === 1 ? "Hausaufgabe" : "Hausaufgaben"}`];
+  if (e) teile.push(`${e} ${e === 1 ? "entfällt" : "entfallen"}`);
+  return teile.join(" · ");
+}
+
+/**
+ * Karten des Tages in Reihenfolge: ein entfallender Kurs steht dort, wo seine erste Stunde gewesen
+ * wäre (fällt die erste Stunde aus, steht er oben). Die Nummer selbst wird nie angezeigt. Kurse
+ * ohne Stundennummer (fest gesetzt, abgeleitet) zählen als letzte.
+ * → [{ art: "kurs" | "entfall", kurs }]
+ */
+export function tagesablauf(digest) {
+  const erste = (k) => (Array.isArray(k.stunden) && k.stunden.length ? Math.min(...k.stunden) : Infinity);
+  const liste = digest.kurse.map((k) => ({ art: "kurs", kurs: k }));
+  for (const e of digest.entfallen) {
+    const i = liste.findIndex((x) => erste(x.kurs) > erste(e));
+    liste.splice(i === -1 ? liste.length : i, 0, { art: "entfall", kurs: e });
+  }
+  return liste;
 }
 
 /** Klartext für Mitteilung oder Widget. Identische Quelle wie die Kopfzeile im Viewer. */
