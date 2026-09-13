@@ -4,7 +4,9 @@
 
 import { lesen, schreiben, loeschen, defektSichern, exportText, exportDateiname, leererBestand } from "../kern/speicher.js";
 import { importieren } from "../kern/importieren.js";
-import { filtern, gruppieren, kurseZaehlen, kurseSortiert, anzeigename, zerlegen, wochentag, datumLesbar, WOCHENTAGE } from "../kern/filtern.js";
+import {
+  filtern, gruppieren, kursListe, trefferZeile, eingegrenzt, anzahlText, kurseZaehlen, kurseSortiert, anzeigename, zerlegen, wochentag, datumLesbar, WOCHENTAGE,
+} from "../kern/filtern.js";
 import {
   baueDigest, digestKopfzeile, tagesablauf, herkunftZeile, syncZeile, planFunktion, schultagSuchen, datumPlus, isoDatum, vorTagenText,
   ermittleWochenplan, mitStandard, lueckeText, stundenSeitAbruf, stundenSeitAbrufText,
@@ -46,6 +48,7 @@ let storage = null;
 try { storage = window.localStorage; } catch { storage = null; }
 
 // zeitraum ("alles" | "klausur" | "ab") ist nur Zustand der Oberfläche; filtern() liest seitKlausur und abDatum.
+// kurs ist die geöffnete Kursseite im Archiv, null die Kursliste.
 const FILTER_LEER = () => ({ kurs: null, abDatum: "", suche: "", nurHausaufgabe: false, seitKlausur: false, zeitraum: "alles" });
 
 const zustand = {
@@ -53,6 +56,7 @@ const zustand = {
   speicherFehler: null,
   filter: FILTER_LEER(),
   filterOffen: false,     // Filterbereich im Archiv aufgeklappt
+  monatAuf: {},           // "kurs|JJJJ-MM" → per Antippen auf- oder zugeklappt, sonst ist nur der neueste Monat offen
   ansicht: "archiv",     // "archiv" | "vorschau" | "einstellungen"
   vorher: "archiv",       // wohin „Zurück“ aus den Einstellungen führt
   seite: [],              // Unterseite der Einstellungen, siehe renderEinstellungen
@@ -129,7 +133,7 @@ function render() {
   } else if (a === "vorschau") {
     renderVorschau();
   } else {
-    renderKurse();
+    renderArchivKopf();
     renderFilter();
     renderListe();
   }
@@ -253,24 +257,42 @@ function abrufHinweis(art, text) {
 }
 
 // ---- Archiv ----------------------------------------------------------------
+//
+// Das Archiv beginnt mit der Kursliste, eine Zeile je Kurs. Antippen öffnet die Kursseite
+// (filter.kurs). Suche und Filter gibt es auf beiden Ebenen: in der Kursliste wirken sie über
+// alle Kurse, dann steht dort das Ergebnis nach Kurs gruppiert. Beim Wechsel zwischen Liste und
+// Kursseite beginnen Suche und Filter leer. Neueste Einträge stehen oben; grenzen Suche oder
+// Zeitraum nicht ein, ist je Kurs nur der neueste Monat offen.
 
-function renderKurse() {
-  const leiste = $("kursleiste");
-  leiste.textContent = "";
-  const { eintraege, kursAlias } = zustand.bestand;
-  const zaehler = kurseZaehlen(eintraege);
-  const chip = (kurs, name, n) => el("button", {
-    type: "button", "aria-pressed": String(zustand.filter.kurs === kurs),
-    "aria-label": `${name}, ${n} ${n === 1 ? "Eintrag" : "Einträge"}`,
-    onclick: () => {
-      zustand.filter.kurs = zustand.filter.kurs === kurs ? null : kurs;
-      renderKurse(); renderFilter(); renderListe();
-    },
-  }, el("span", { text: name }), el("span", { class: "n", text: String(n) }));
-  leiste.append(chip(null, "Alle", eintraege.length));
-  for (const kurs of kurseSortiert(Object.keys(zaehler), kursAlias)) {
-    leiste.append(chip(kurs, anzeigename(kurs, kursAlias), zaehler[kurs]));
-  }
+function renderArchivKopf() {
+  const box = $("archiv-kopf");
+  box.textContent = "";
+  const { kurs } = zustand.filter;
+  const name = kurs ? anzeigename(kurs, zustand.bestand.kursAlias) : "";
+  box.hidden = !kurs;
+  if (kurs) seitenKopf(box, "Archiv", zurKursliste, name);
+  const suche = $("suche");
+  suche.placeholder = kurs ? `In ${name} suchen` : "In allen Kursen suchen";
+  suche.setAttribute("aria-label", kurs ? `Suche in ${name}` : "Suche in allen Kursen");
+}
+
+function kursOeffnen(kurs) {
+  archivEbene(kurs);
+  $("archiv-kopf").querySelector("h2").focus({ preventScroll: true });
+}
+
+function zurKursliste() {
+  archivEbene(null);
+  $("suche").focus({ preventScroll: true });
+}
+
+function archivEbene(kurs) {
+  zustand.filter = { ...FILTER_LEER(), kurs };
+  zustand.filterOffen = false;
+  renderArchivKopf();
+  renderFilter();
+  renderListe();
+  window.scrollTo(0, 0);
 }
 
 // ---- Archiv: Suche und Filter ----------------------------------------------
@@ -384,7 +406,7 @@ function abDatumFeld() {
   return el("div", { class: "filter-unter" }, el("label", { class: "feld" }, el("span", { text: "Ab" }), eingabe));
 }
 
-/** Unter „Seit Klausur“: mit gewähltem Kurs dessen Klausurdatum (dasselbe wie unter Einstellungen → Kurse), sonst der Stand. */
+/** Unter „Seit Klausur“: auf der Kursseite dessen Klausurdatum (dasselbe wie unter Einstellungen → Kurse), in der Kursliste der Stand. */
 function klausurFeld() {
   const { filter } = zustand;
   const { klausurschnitt, kursAlias, eintraege } = zustand.bestand;
@@ -392,7 +414,7 @@ function klausurFeld() {
   if (!filter.kurs) {
     const alle = Object.keys(kurseZaehlen(eintraege));
     const mitDatum = alle.filter((k) => klausurschnitt[k]).length;
-    box.append(el("p", { class: "info", text: `Je Kurs ab dem eingetragenen Klausurdatum. ${mitDatum} von ${alle.length} Kursen haben eins. Kurs oben antippen, um es zu setzen.` }));
+    box.append(el("p", { class: "info", text: `Je Kurs ab dem eingetragenen Klausurdatum. ${mitDatum} von ${alle.length} Kursen haben eins. Eintragen lässt es sich im Filter auf der Seite des Kurses oder unter Einstellungen → Kurse.` }));
     return box;
   }
   const kurs = filter.kurs;
@@ -434,31 +456,70 @@ function renderListe() {
     return;
   }
 
-  const treffer = filtern(bestand.eintraege, filter, bestand.klausurschnitt);
-  if (!treffer.length) {
-    ausgabe.append(el("div", { class: "leer-hinweis" },
-      el("p", { text: "Keine Einträge für diese Auswahl." }),
-      el("div", { class: "knoepfe" }, el("button", { type: "button", onclick: () => { zustand.filter = FILTER_LEER(); render(); } }, "Alles zurücksetzen"))));
+  // Kursliste ohne Suche und Filter: nur eine Zeile je Kurs, die Einträge stehen auf der Kursseite.
+  if (!filter.kurs && !filter.suche.trim() && !aktiveFilter().length) {
+    ausgabe.append(gruppe(kursListe(bestand.eintraege, bestand.kursAlias).map((k) =>
+      zeile(k.name, k.text, () => kursOeffnen(k.kurs)))));
     return;
   }
 
-  for (const gruppe of gruppieren(treffer, bestand.kursAlias)) {
-    const block = el("section", { class: "kursblock" },
-      el("h2", { text: gruppe.name }),
-      el("div", { class: "spanne", text: `${gruppe.anzahl} ${gruppe.anzahl === 1 ? "Eintrag" : "Einträge"} · ${datumLesbar(gruppe.von)} bis ${datumLesbar(gruppe.bis)}` }),
-    );
-    for (const monat of gruppe.monate) {
-      block.append(el("div", { class: "monat", text: monat.name }));
-      for (const e of monat.eintraege) {
-        const inhalt = el("div", { class: "inhalt" });
-        if (e.thema) inhalt.append(el("div", { class: "thema" }, hervorheben(e.thema, filter.suche)));
-        else inhalt.append(el("div", { class: "thema leer", text: "Kein Inhalt eingetragen" }));
-        if (e.hausaufgabe) inhalt.append(el("div", { class: "ha" }, el("b", { text: "Hausaufgabe: " }), hervorheben(e.hausaufgabe, filter.suche)));
-        block.append(el("div", { class: "eintrag" }, el("div", { class: "wann", text: wochentag(e.datum) }), inhalt));
-      }
-    }
-    ausgabe.append(block);
+  const treffer = filtern(bestand.eintraege, filter, bestand.klausurschnitt);
+  if (!treffer.length) {
+    const zuruecksetzen = () => {
+      zustand.filter = { ...FILTER_LEER(), kurs: filter.kurs };
+      renderFilter();
+      renderListe();
+    };
+    ausgabe.append(el("div", { class: "leer-hinweis" },
+      el("p", { text: "Keine Einträge für diese Auswahl." }),
+      el("div", { class: "knoepfe" }, el("button", { type: "button", onclick: zuruecksetzen }, "Alles zurücksetzen"))));
+    return;
   }
+
+  const gruppen = gruppieren(treffer, bestand.kursAlias);
+  const zuklappen = !eingegrenzt(filter, bestand.klausurschnitt);
+  if (!filter.kurs) ausgabe.append(el("p", { class: "treffer", text: trefferZeile(gruppen) }));
+  for (const g of gruppen) ausgabe.append(kursAbschnitt(g, { titel: !filter.kurs, zuklappen }));
+}
+
+/** Einträge eines Kurses nach Monaten. titel: Kursname als Überschrift (Ergebnis aus allen Kursen). */
+function kursAbschnitt(g, { titel, zuklappen }) {
+  const { suche } = zustand.filter;
+  const block = el("section", { class: "kursblock" },
+    titel ? el("h2", { text: g.name }) : null,
+    el("div", { class: "spanne", text: `${anzahlText(g.anzahl)} · ${datumLesbar(g.von)} bis ${datumLesbar(g.bis)}` }));
+  g.monate.forEach((monat, i) => {
+    const liste = el("div", {}, monat.eintraege.map((e) => eintragZeile(e, suche)));
+    if (!zuklappen) {
+      block.append(el("div", { class: "monat", text: monat.name }), liste);
+      return;
+    }
+    const schluessel = `${g.kurs}|${monat.schluessel}`;
+    const offen = zustand.monatAuf[schluessel] ?? i === 0;
+    liste.hidden = !offen;
+    const knopf = el("button", {
+      type: "button", class: "monat-knopf", "aria-expanded": String(offen),
+      onclick: () => {
+        const auf = liste.hidden;
+        liste.hidden = !auf;
+        knopf.setAttribute("aria-expanded", String(auf));
+        zustand.monatAuf[schluessel] = auf;
+      },
+    },
+    el("span", { class: "monat-name", text: monat.name }),
+    el("span", { class: "monat-n", text: anzahlText(monat.eintraege.length) }),
+    el("span", { class: "monat-pfeil", "aria-hidden": "true", text: "›" }));
+    block.append(knopf, liste);
+  });
+  return block;
+}
+
+function eintragZeile(e, suche) {
+  const inhalt = el("div", { class: "inhalt" });
+  if (e.thema) inhalt.append(el("div", { class: "thema" }, hervorheben(e.thema, suche)));
+  else inhalt.append(el("div", { class: "thema leer", text: "Kein Inhalt eingetragen" }));
+  if (e.hausaufgabe) inhalt.append(el("div", { class: "ha" }, el("b", { text: "Hausaufgabe: " }), hervorheben(e.hausaufgabe, suche)));
+  return el("div", { class: "eintrag" }, el("div", { class: "wann", text: wochentag(e.datum) }), inhalt);
 }
 
 // ---- Vorschau --------------------------------------------------------------
@@ -862,6 +923,7 @@ function archivLoeschen() {
   zustand.bestand = leererBestand();
   zustand.filter = FILTER_LEER();
   zustand.filterOffen = false;
+  zustand.monatAuf = {};
   zustand.vorschauDatum = null;
   zustand.ansicht = "archiv";
   zustand.vorher = "archiv";
@@ -881,7 +943,11 @@ function verdrahten() {
   $("knopf-einstellungen").addEventListener("click", () => {
     ansichtWechseln(zustand.ansicht === "einstellungen" ? zustand.vorher : "einstellungen");
   });
-  $("reiter-archiv").addEventListener("click", () => ansichtWechseln("archiv"));
+  // Archiv antippen, während eine Kursseite offen ist, führt zur Kursliste zurück.
+  $("reiter-archiv").addEventListener("click", () => {
+    if (zustand.ansicht === "archiv" && zustand.filter.kurs) zurKursliste();
+    else ansichtWechseln("archiv");
+  });
   $("reiter-vorschau").addEventListener("click", () => { zustand.vorschauDatum = null; ansichtWechseln("vorschau"); });
   $("suche").addEventListener("input", () => { zustand.filter.suche = $("suche").value; renderListe(); });
   $("filter-knopf").addEventListener("click", () => { zustand.filterOffen = !zustand.filterOffen; renderFilter(); });

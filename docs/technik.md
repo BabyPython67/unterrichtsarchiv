@@ -44,12 +44,22 @@ sie ab, ist das Lesezeichen veraltet und muss neu gezogen werden.
 
 ## Viewer
 
-**Archiv.** Oben die Kursleiste, darunter eine Zeile mit Suche und dem Knopf „Filter“. Der
-Knopf klappt einen Bereich auf: Zeitraum (Alles, Seit Klausur, Ab Datum) und Einträge (Alle,
-Mit Hausaufgabe). „Seit Klausur“ wirkt je Kurs ab dem eingetragenen Klausurdatum; „Ab Datum“
-und „Seit Klausur“ schließen sich aus. Bei zugeklapptem Bereich stehen wirkende Filter als
-Marken über der Liste, Antippen entfernt sie. Die Zahl am Knopf zählt diese Filter; Suche und
-Kurs sieht man ohnehin und zählen nicht.
+**Archiv.** Zwei Ebenen. Ohne Suche und Filter steht die Kursliste da, eine Zeile je Kurs mit
+Anzahl und letztem Eintrag (`kursListe`). Antippen öffnet die Kursseite (`filter.kurs`) mit
+Zurück-Knopf; der Reiter „Archiv“ führt ebenfalls zur Liste. Auf beiden Ebenen stehen oben die
+Suche und der Knopf „Filter“. Der Knopf klappt einen Bereich auf: Zeitraum (Alles, Seit Klausur,
+Ab Datum) und Einträge (Alle, Mit Hausaufgabe). In der Kursliste wirken Suche und Filter über
+alle Kurse; das Ergebnis steht nach Kurs gruppiert unter einer Zeile wie „12 Einträge in
+4 Kursen“ (`trefferZeile`). „Seit Klausur“ wirkt je Kurs ab dem eingetragenen Klausurdatum;
+„Ab Datum“ und „Seit Klausur“ schließen sich aus. Bei zugeklapptem Bereich stehen wirkende Filter
+als Marken über der Liste, Antippen entfernt sie. Die Zahl am Knopf zählt diese Filter; die Suche
+sieht man ohnehin und zählt nicht. Der Wechsel zwischen Liste und Kursseite beginnt mit leerer
+Suche und ohne Filter.
+
+Einträge stehen neueste zuerst, nach Monaten. Grenzen Suche, „Ab Datum“ oder ein wirkendes
+Klausurdatum die Liste ein (`eingegrenzt`), sind alle Monate offen. Sonst ist je Kurs nur der
+neueste Monat offen, ältere öffnen sich per Antippen; das bleibt bis zum Neuladen gemerkt.
+„Mit Hausaufgabe“ allein klappt nichts auf, weil die Liste über ein Schuljahr lang bleibt.
 
 **Einstellungen.** Eine Übersicht mit einer Zeile je Thema (Beim Öffnen, Kurse, Vorschau,
 Daten), jeweils mit dem aktuellen Stand darunter. Details stehen auf Unterseiten.

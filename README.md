@@ -7,49 +7,9 @@ Was war in Mathe seit der letzten Klausur dran?
 - **App öffnen:** <https://babypython67.github.io/unterrichtsarchiv/>
 - **Lesezeichen holen:** <https://babypython67.github.io/unterrichtsarchiv/install.html>
 
-## Neu seit der ersten Version
-
-**Zuerst: Lesezeichen neu anlegen.** Auf der Lesezeichen-Seite das Lesezeichen noch einmal
-anlegen, genau wie beim ersten Mal. Das alte kann weg: Es holt den Stundenplan nicht mit und hat
-noch keinen Knopf, der danach zur App wechselt. Ob die
-aktuelle Version installiert ist, zeigt die Build-Kennung: Sie steht auf der Lesezeichen-Seite und
-in der Box, die nach dem Antippen im Schulmanager erscheint. Stimmen beide überein, passt es.
-
-### Vorschau auf den nächsten Schultag
-
-Der neue Reiter „Vorschau“ zeigt, welche Kurse als Nächstes anstehen. Zu jedem Kurs stehen die
-offene Hausaufgabe und das, was zuletzt dran war. Mit den Pfeilen geht es zu den folgenden
-Schultagen. Auf Wunsch startet die App gleich mit der Vorschau (Einstellungen → Beim Öffnen).
-
-### Stundenplan aus dem Schulmanager
-
-Das Lesezeichen holt jetzt auch den Stundenplan für diese und die nächste Woche. Die Vorschau
-zeigt die Kurse damit in der Reihenfolge des Tages.
-
-- Fällt ein Kurs aus, steht er rot durchgestrichen an seiner Stelle.
-- Vertretungen sind markiert.
-- Klausuren anderer Kurse, die der Schulmanager allen anzeigt, blendet die App aus.
-- Heißt ein Fach im Stundenplan anders als im Archiv, fragt die Vorschau einmal, welcher Kurs
-  gemeint ist. Fächer, die nicht zum eigenen Unterricht gehören, lassen sich auf „Nicht
-  anzeigen“ stellen.
-
-Für Tage, die der Stundenplan noch nicht abdeckt, schätzt die App aus den bisherigen Einträgen,
-welche Kurse an welchem Wochentag sind. Unter Einstellungen → Vorschau lassen sich der Wochenplan
-korrigieren und Ferien oder freie Tage eintragen.
-
-### Filter im Archiv
-
-Über der Liste stehen nur noch die Suche und der Knopf „Filter“. Dahinter lässt sich der Zeitraum
-wählen (Alles, Seit Klausur, Ab Datum) und die Liste auf Einträge mit Hausaufgabe beschränken.
-Welche Filter gerade wirken, steht über der Liste. Antippen nimmt einen Filter wieder weg.
-
-„Seit Klausur“ nutzt das Klausurdatum, das je Kurs eingetragen wird: direkt im Filter, wenn oben
-ein Kurs gewählt ist, oder unter Einstellungen → Kurse.
-
-### Übersichtlichere Einstellungen
-
-Die Einstellungen sind jetzt eine kurze Liste: Beim Öffnen, Kurse, Vorschau, Daten. Jede Zeile
-zeigt den aktuellen Stand, die Details kommen nach dem Antippen.
+Das Unterrichtsarchiv ist ein privates Projekt und gehört nicht zu Schulmanager Online.
+Wie es technisch funktioniert, steht in [docs/technik.md](docs/technik.md). Was sich zuletzt
+geändert hat, steht unten im [Verlauf](#verlauf).
 
 ## Erste Schritte
 
@@ -69,6 +29,42 @@ Woche. Was einmal im Archiv ist, bleibt dort, auch wenn es im Schulmanager spät
 - Symbol auf dem Home-Bildschirm: die App in Safari öffnen, Teilen → „Zum Home-Bildschirm“ und
   dabei den Schalter **„Als Web-App öffnen“ ausschalten**. Ist er an, hat das Symbol einen eigenen
   Speicher und bekommt keine Daten vom Lesezeichen.
+
+## Archiv
+
+Das Archiv beginnt mit der Liste der Kurse. Jede Zeile zeigt, wie viele Einträge der Kurs hat und
+von wann der letzte ist. Antippen öffnet die Seite des Kurses: die neuesten Einträge oben, der
+neueste Monat aufgeklappt, ältere Monate öffnen sich beim Antippen. „‹ Archiv“ führt zurück.
+
+Suche und Filter gibt es in der Kursliste und auf jeder Kursseite. In der Kursliste wirken sie über
+alle Kurse, das Ergebnis steht dann nach Kurs sortiert. So lassen sich zum Beispiel alle
+Hausaufgaben seit einem Datum auf einen Blick sehen. Auf der Seite eines Kurses wirken sie nur
+dort.
+
+Hinter „Filter“ lässt sich der Zeitraum wählen (Alles, Seit Klausur, Ab Datum) und die Liste auf
+Einträge mit Hausaufgabe beschränken. Welche Filter gerade wirken, steht über der Liste. Antippen
+nimmt einen Filter wieder weg. „Seit Klausur“ nutzt das Klausurdatum, das je Kurs eingetragen
+wird: im Filter auf der Seite des Kurses oder unter Einstellungen → Kurse.
+
+## Vorschau
+
+Der Reiter „Vorschau“ zeigt, welche Kurse als Nächstes anstehen, in der Reihenfolge des Tages. Zu
+jedem Kurs stehen die offene Hausaufgabe und das, was zuletzt dran war. Mit den Pfeilen geht es zu
+den folgenden Schultagen. Auf Wunsch startet die App gleich mit der Vorschau (Einstellungen →
+Beim Öffnen).
+
+Den Stundenplan für diese und die nächste Woche holt das Lesezeichen mit.
+
+- Fällt ein Kurs aus, steht er rot durchgestrichen an seiner Stelle.
+- Vertretungen sind markiert.
+- Klausuren anderer Kurse, die der Schulmanager allen anzeigt, blendet die App aus.
+- Heißt ein Fach im Stundenplan anders als im Archiv, fragt die Vorschau einmal, welcher Kurs
+  gemeint ist. Fächer, die nicht zum eigenen Unterricht gehören, lassen sich auf „Nicht
+  anzeigen“ stellen.
+
+Für Tage, die der Stundenplan noch nicht abdeckt, schätzt die App aus den bisherigen Einträgen,
+welche Kurse an welchem Wochentag sind. Unter Einstellungen → Vorschau lassen sich der Wochenplan
+korrigieren und Ferien oder freie Tage eintragen.
 
 ## Was im Archiv fehlen kann
 
@@ -108,5 +104,20 @@ Zeile mit dem Stand, wie viele Schulstunden seitdem waren.
 - **Fehlermeldung im Schulmanager:** Oben rechts steht eine Box mit „Meldung kopieren“. Den Text
   an mich schicken.
 
-Das Unterrichtsarchiv ist ein privates Projekt und gehört nicht zu Schulmanager Online.
-Wie es technisch funktioniert, steht in [docs/technik.md](docs/technik.md).
+## Verlauf
+
+Nur Änderungen, die man bei der Benutzung merkt, die neuesten oben. Steht **Lesezeichen neu
+anlegen** dabei, auf der Lesezeichen-Seite das Lesezeichen noch einmal anlegen, genau wie beim
+ersten Mal. Ob es aktuell ist, zeigt die Build-Kennung: Sie steht auf der Lesezeichen-Seite und in
+der Box, die nach dem Antippen im Schulmanager erscheint. Stimmen beide überein, passt es. Bei
+allen anderen Änderungen reicht es, die App neu zu laden.
+
+- **13.09.2026:** Das Archiv beginnt mit einer Kursliste. Jeder Kurs hat eine eigene Seite, die
+  neuesten Einträge stehen oben, ältere Monate sind zugeklappt. Suche und Filter über alle Kurse
+  gibt es weiterhin.
+- **13.09.2026:** Das Lesezeichen holt den Stundenplan mit. Die Vorschau zeigt die Kurse in der
+  Reihenfolge des Tages, markiert Ausfall und Vertretung und weist auf fehlende Einträge hin.
+  Nach dem Antippen wechselt das Lesezeichen von selbst zur App. Einstellungen und Filter sind
+  übersichtlicher. **Lesezeichen neu anlegen.**
+- **11.09.2026:** Vorschau auf den nächsten Schultag.
+- **11.09.2026:** Erste Version: Archiv nach Kursen, Suche, „Seit Klausur“, Export und Import.

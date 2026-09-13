@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { filtern, gruppieren, zerlegen, anzeigename, kurseZaehlen, kurseSortiert, wochentag, datumLesbar, monatsName } from "../kern/filtern.js";
+import {
+  filtern, gruppieren, kursListe, trefferZeile, eingegrenzt, zerlegen, anzeigename, kurseZaehlen, kurseSortiert, wochentag, datumLesbar, monatsName,
+} from "../kern/filtern.js";
 import { zeilenAusRohantwort } from "../kern/rohantwort.js";
 import { kombiniert } from "./hilfen.js";
 
@@ -52,7 +54,7 @@ test("filtern: Kombination aller Filter", () => {
   assert.deepEqual(z.map((e) => e.datum), ["2026-09-04", "2026-09-10"]);
 });
 
-test("gruppieren: Kurse nach Anzeigename sortiert, Alias nur beim Anzeigen, Monate getrennt", () => {
+test("gruppieren: Kurse nach Anzeigename sortiert, Alias nur beim Anzeigen, Monate getrennt, neueste zuerst", () => {
   const eintraege = [
     { id: "b", kurs: "Lateinisch, Beginn in Jahrgangsklasse 7", datum: "2026-10-02", position: 1, thema: "x", hausaufgabe: "" },
     { id: "a", kurs: "Lateinisch, Beginn in Jahrgangsklasse 7", datum: "2026-09-08", position: 2, thema: "y", hausaufgabe: "" },
@@ -63,8 +65,9 @@ test("gruppieren: Kurse nach Anzeigename sortiert, Alias nur beim Anzeigen, Mona
   assert.deepEqual(g.map((k) => k.name), ["Latein", "Mathematik"]);
   assert.equal(g[0].kurs, "Lateinisch, Beginn in Jahrgangsklasse 7");
   assert.equal(g[0].anzahl, 3);
-  assert.deepEqual(g[0].monate.map((m) => m.name), ["September 2026", "Oktober 2026"]);
-  assert.deepEqual(g[0].monate[0].eintraege.map((e) => e.id), ["c", "a"]);
+  assert.deepEqual(g[0].monate.map((m) => m.name), ["Oktober 2026", "September 2026"]);
+  assert.deepEqual(g[0].monate[0].eintraege.map((e) => e.id), ["b"]);
+  assert.deepEqual(g[0].monate[1].eintraege.map((e) => e.id), ["c", "a"]);   // gleicher Tag: Lieferreihenfolge
   assert.equal(g[0].von, "2026-09-08"); assert.equal(g[0].bis, "2026-10-02");
   // Alias sortiert Mathematik nach vorn -> Reihenfolge folgt dem Anzeigenamen
   assert.deepEqual(gruppieren(eintraege, { Mathematik: "Aaa" }).map((k) => k.name), ["Aaa", "Lateinisch, Beginn in Jahrgangsklasse 7"]);
@@ -77,6 +80,35 @@ test("gruppieren: echte Daten -> 10 Kurse, 27 Einträge", () => {
   assert.equal(g.length, 10);
   assert.equal(g.reduce((s, k) => s + k.anzahl, 0), 27);
   assert.equal(g[0].name, "Deutsch");
+});
+
+test("kursListe: je Kurs Anzahl und letzter Eintrag, sortiert nach Anzeigename", () => {
+  const l = kursListe(alle);
+  assert.equal(l.length, 10);
+  assert.equal(l[0].name, "Deutsch");
+  const mathe = l.find((k) => k.kurs === "Mathematik");
+  assert.deepEqual([mathe.anzahl, mathe.zuletzt, mathe.text], [4, "2026-09-10", "4 Einträge · zuletzt Do 10.09."]);
+  assert.deepEqual(kursListe([{ kurs: "PsG1", datum: "2026-09-09" }], { PsG1: "Psychologie" }),
+    [{ kurs: "PsG1", name: "Psychologie", anzahl: 1, zuletzt: "2026-09-09", text: "1 Eintrag · zuletzt Mi 09.09." }]);
+  assert.deepEqual(kursListe([]), []);
+});
+
+test("trefferZeile: Einträge und Kurse, Einzahl", () => {
+  assert.equal(trefferZeile([{ anzahl: 1 }]), "1 Eintrag in 1 Kurs");
+  assert.equal(trefferZeile([{ anzahl: 3 }, { anzahl: 2 }]), "5 Einträge in 2 Kursen");
+});
+
+test("eingegrenzt: Suche und Zeitraum ja, Mit Hausaufgabe allein nein, Seit Klausur nur mit Datum", () => {
+  assert.equal(eingegrenzt({}), false);
+  assert.equal(eingegrenzt({ suche: "  " }), false);
+  assert.equal(eingegrenzt({ suche: "Ableitung" }), true);
+  assert.equal(eingegrenzt({ abDatum: "2026-09-01" }), true);
+  assert.equal(eingegrenzt({ nurHausaufgabe: true }), false);
+  const schnitt = { Mathematik: "2026-09-07" };
+  assert.equal(eingegrenzt({ seitKlausur: true }, {}), false);
+  assert.equal(eingegrenzt({ seitKlausur: true }, schnitt), true);
+  assert.equal(eingegrenzt({ kurs: "Mathematik", seitKlausur: true }, schnitt), true);
+  assert.equal(eingegrenzt({ kurs: "Englisch", seitKlausur: true }, schnitt), false);
 });
 
 test("zerlegen: Segmente mit Treffern, ohne Groß/Klein", () => {

@@ -175,28 +175,9 @@ a { color: var(--akzent); }
 
 .filter-aktiv .x { margin-left: 8px; color: var(--leise); }
 
-/* Kursleiste */
-.kurse {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 12px 16px 4px;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
-}
-
-.kurse button {
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-
-.kurse .n {
-  color: var(--leise);
-  margin-left: 6px;
-  font-variant-numeric: tabular-nums;
-}
-
-.kurse button[aria-pressed="true"] .n { color: inherit; opacity: .8; }
+/* Kopf der Kursseite im Archiv: Zurück zur Kursliste, darunter der Kursname */
+.archiv-kopf { padding: 8px 16px 0; max-width: 780px; }
+.archiv-kopf .seitenkopf { margin-bottom: 4px; }
 
 /* Werkzeuge: nur Suche und Filter-Knopf in einer Zeile, bleibt beim Scrollen oben */
 .werkzeuge {
@@ -234,7 +215,8 @@ main {
   max-width: 780px;
 }
 
-.kursblock { margin-top: 26px; }
+.kursblock { margin-top: 24px; }
+main > .kursblock:first-child { margin-top: 10px; }
 
 .kursblock > h2 {
   margin: 0 0 2px;
@@ -244,6 +226,9 @@ main {
 
 .spanne { color: var(--leise); font-size: 13px; margin-bottom: 10px; }
 
+/* Über Such- und Filterergebnissen aus allen Kursen */
+.treffer { margin: 10px 0 0; color: var(--leise); font-size: 14px; }
+
 .monat {
   margin: 16px 0 6px;
   font-size: 13px;
@@ -252,6 +237,28 @@ main {
   border-bottom: 1px solid var(--linie);
   padding-bottom: 4px;
 }
+
+/* Monat zum Auf- und Zuklappen, wenn Suche und Zeitraum die Liste nicht eingrenzen */
+.monat-knopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--linie);
+  border-radius: 0;
+  background: transparent;
+  color: var(--tinte);
+  text-align: left;
+}
+
+.monat-knopf:hover { border-bottom-color: var(--leise); }
+.monat-knopf:focus-visible { outline-offset: -2px; }
+.monat-name { flex: 1; font-weight: 600; }
+.monat-n { color: var(--leise); font-size: 14px; }
+.monat-pfeil { color: var(--leise); font-size: 20px; line-height: 1; width: 12px; text-align: center; }
+.monat-knopf[aria-expanded="true"] .monat-pfeil { transform: rotate(90deg); }
 
 .eintrag {
   display: grid;
@@ -329,7 +336,7 @@ mark {
 }
 
 .seitenkopf .zurueck:hover { text-decoration: underline; }
-.einstellungen .seitenkopf h2 { margin: 2px 0 0; overflow-wrap: anywhere; }
+.seitenkopf h2 { font-size: 20px; margin: 2px 0 0; overflow-wrap: anywhere; }
 .seitenkopf h2:focus { outline: none; }
 
 /* Gruppe aus Zeilen: Titel, darunter leise der Stand, rechts Pfeil oder Bedienelement */
