@@ -196,14 +196,15 @@ export function tagesplan(datum, stundenplan, wochenplan, einstellungen, kurszuo
 
 /**
  * Sucht ab `start` (einschließlich) in `richtung` (+1/−1) höchstens `maxTage` Tage weit den
- * ersten Tag ohne Wochenende, nicht in freieTage, mit ≥ 1 Kurs. Sonst null.
+ * ersten Tag ohne Wochenende, nicht in freieTage, mit ≥ 1 Kurs oder Entfall. Sonst null.
+ * Ein Tag, an dem alles entfällt, zählt mit: Die Vorschau zeigt ihn mit den Entfall-Karten.
  */
 export function schultagSuchen(start, richtung, tagesplanFn, freieTage = [], maxTage = SCHULTAGE_VORAUS) {
   for (let i = 0; i < maxTage; i++) {
     const d = datumPlus(start, i * richtung);
     if (istWochenende(d) || istFrei(d, freieTage)) continue;
     const plan = tagesplanFn(d);
-    if (plan && plan.kurse.length) return d;
+    if (plan && (plan.kurse.length || (plan.entfallen && plan.entfallen.length))) return d;
   }
   return null;
 }
@@ -307,12 +308,14 @@ export function baueDigest(jetzt, daten) {
   };
 }
 
-/** Zweite Zeile unter dem Datum: "5 Kurse · 2 Hausaufgaben", bei Entfall dazu "· 1 entfällt". */
+/** Zweite Zeile unter dem Datum: "5 Kurse · 2 Hausaufgaben", bei Entfall dazu "· 1 entfällt".
+ * Entfällt alles: "2 Kurse entfallen". */
 export function digestKopfzeile(digest) {
   if (!digest.datum) return "";
   const n = digest.kurse.length;
   const h = digest.anzahlHA;
   const e = digest.entfallen.length;
+  if (!n && e) return `${e} ${e === 1 ? "Kurs entfällt" : "Kurse entfallen"}`;
   const teile = [`${n} ${n === 1 ? "Kurs" : "Kurse"}`, `${h} ${h === 1 ? "Hausaufgabe" : "Hausaufgaben"}`];
   if (e) teile.push(`${e} ${e === 1 ? "entfällt" : "entfallen"}`);
   return teile.join(" · ");

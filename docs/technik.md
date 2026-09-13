@@ -15,10 +15,11 @@ Wie die App funktioniert, wie sie gebaut und geprüft wird. Für die Benutzung r
    neuen Tab, holt Inhalte, Hausaufgaben und Stundenplan mit der bestehenden Sitzung ab und
    schickt sie per `postMessage` an den Viewer. Oben rechts im Schulmanager-Tab erscheint eine
    Statusbox mit „Meldung kopieren“ für Fehlermeldungen. Bestätigt der Viewer den Empfang,
-   erscheint dort der Link „Zum Unterrichtsarchiv“ (Ziel: das benannte Fenster
-   `unterrichtsarchiv`). iOS-Safari lässt den neuen Tab im Hintergrund, der Link holt ihn nach
-   vorn und lädt ihn dabei neu. Weil der Viewer nur mit `?empfang=1` auf Daten wartet, startet
-   dieses Neuladen keinen zweiten Handshake.
+   erscheint dort der Link „Zum Unterrichtsarchiv“. iOS-Safari lässt den neuen Tab im
+   Hintergrund, und ein Link auf das benannte Fenster zeigte am iPhone keine Reaktion
+   (2026-09-13). Der Link öffnet die App deshalb im Schulmanager-Tab selbst und schließt den
+   Tab, den das Lesezeichen geöffnet hat. Die Daten sind zu dem Zeitpunkt schon gespeichert.
+   Der Viewer wartet nur mit `?empfang=1` auf Daten, der Link öffnet ihn ohne diesen Zusatz.
 3. Kommt der Viewer nicht an die Daten (Popup blockiert, 15 s ohne Antwort), lädt das
    Lesezeichen stattdessen `unterricht-JJJJ-MM-TT.json` herunter. Diese Datei im Viewer unter
    Einstellungen → Daten → „Importieren“ einlesen. Dasselbe funktioniert mit Export-Dateien des

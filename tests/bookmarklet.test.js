@@ -114,7 +114,7 @@ test("empfangsQuelle: Origin-Prüfung streng, lokal nur auf localhost gelockert"
   assert.equal(WURZEL.length > 0, true);
 });
 
-test("empfangErwartet: nur mit ?empfang, damit Neuladen über den Link nicht auf Daten wartet", () => {
+test("empfangErwartet: nur mit ?empfang, so wie das Lesezeichen den Viewer öffnet", () => {
   assert.equal(empfangErwartet({ hostname: "x", search: "?empfang=1" }), true);
   assert.equal(empfangErwartet({ hostname: "x", search: "?sw=1&empfang" }), true);
   assert.equal(empfangErwartet({ hostname: "x", search: "" }), false);
@@ -122,13 +122,12 @@ test("empfangErwartet: nur mit ?empfang, damit Neuladen über den Link nicht auf
   assert.equal(empfangErwartet(null), false);
 });
 
-test("Lesezeichen: „Zum Unterrichtsarchiv“ zielt auf dasselbe Fenster wie window.open, ohne ?empfang", () => {
+test("Lesezeichen: „Zum Unterrichtsarchiv“ öffnet die App im selben Tab (ohne ?empfang) und schließt den Hintergrund-Tab", () => {
   const src = readFileSync(new URL("../bookmarklet/src.js", import.meta.url), "utf8");
-  const offen = /window\.open\(VIEWER_URL \+ "\?empfang=1", "([^"]+)"\)/.exec(src);
-  const ziel = /zumArchiv\.target = "([^"]+)";/.exec(src);
-  assert.ok(offen && ziel, "window.open oder Link-Ziel nicht gefunden");
-  assert.equal(ziel[1], offen[1]);
   assert.match(src, /zumArchiv\.href = VIEWER_URL;/);
+  assert.doesNotMatch(src, /zumArchiv\.target/, "ein Link auf den benannten Tab zeigte am iPhone keine Reaktion");
+  assert.match(src, /viewer\.close\(\);/);
+  assert.match(src, /location\.assign\(VIEWER_URL\);/);
 });
 
 function jwtBauen(nutzlast) {

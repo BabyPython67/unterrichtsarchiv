@@ -26,8 +26,8 @@ export function bereitZiele(location) {
   return ziele;
 }
 
-/** Nur der Aufruf mit ?empfang=1 (so öffnet ihn das Lesezeichen) wartet auf Daten. Lädt der
- * Tab über „Zum Unterrichtsarchiv“ neu, hat er weiter einen Öffner, soll aber nicht warten. */
+/** Nur der Aufruf mit ?empfang=1 (so öffnet ihn das Lesezeichen) wartet auf Daten. Wird die App
+ * ohne diesen Zusatz geöffnet, startet kein Handshake, auch wenn es einen Öffner gibt. */
 export function empfangErwartet(location) {
   return !!location && new URLSearchParams(location.search || "").has("empfang");
 }

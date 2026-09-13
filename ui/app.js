@@ -475,7 +475,7 @@ function renderVorschau() {
       el("button", { type: "button", onclick: () => { zustand.vorschauDatum = null; renderVorschau(); } }, "Zum nächsten Schultag")));
   }
 
-  if (!digest.kurse.length) {
+  if (!digest.kurse.length && !digest.entfallen.length) {
     box.append(el("p", { class: "leer-hinweis", text: "Kein Unterricht an diesem Tag." }));
   }
   // Entfall als eigene Karte an der Stelle im Tag, wo der Kurs gewesen wäre.

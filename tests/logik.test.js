@@ -225,11 +225,12 @@ test("naechsterSchultag 9: Do 21:00 -> Fr; Fr 21:00 -> Mo; Mo 06:30 -> heute; Mo
   assert.equal(naechsterSchultag(new Date(2026, 8, 14, 9, 0), werktagsPlan, [], "08:00"), "2026-09-15");
 });
 
-test("naechsterSchultag 10: freie Tage und Voll-Entfall übersprungen, leerer Plan -> null", () => {
+test("naechsterSchultag 10: freie Tage übersprungen, Voll-Entfall zählt als Schultag, leerer Plan -> null", () => {
   assert.equal(naechsterSchultag(new Date(2026, 8, 14, 9, 0), werktagsPlan, ["2026-09-15"], "08:00"), "2026-09-16");
   assert.equal(naechsterSchultag(new Date(2026, 8, 14, 9, 0), werktagsPlan, ["2026-09-15..2026-09-25"], "08:00"), "2026-09-28");
   const gemessen = (d) => tagesplan(d, stundenplanFixture(), wochenplanFixture(), {}, zuordnung);
-  assert.equal(naechsterSchultag(new Date(2026, 8, 16, 20, 0), gemessen, [], "08:00"), "2026-09-21");   // 17.09. voller Entfall, 18.09. leer, Wochenende
+  assert.equal(naechsterSchultag(new Date(2026, 8, 16, 20, 0), gemessen, [], "08:00"), "2026-09-17");   // 17.09. voller Entfall: wird gezeigt
+  assert.equal(naechsterSchultag(new Date(2026, 8, 17, 20, 0), gemessen, [], "08:00"), "2026-09-21");   // 18.09. leer, Wochenende
   assert.equal(naechsterSchultag(new Date(2026, 8, 14, 9, 0), () => ({ kurse: [] }), [], "08:00"), null);
   assert.equal(naechsterSchultag(new Date(2026, 8, 14, 9, 0), werktagsPlan, ["2026-09-01..2026-12-31"], "08:00"), null);
 });
@@ -344,6 +345,16 @@ test("tagesablauf: Entfall steht an der Stelle seiner ersten Stunde, fest gesetz
   // Ohne Entfall bleibt die Reihenfolge der Kurse unverändert.
   const ohne = baueDigest(new Date(2026, 8, 14, 20, 0), digestDaten());
   assert.deepEqual(tagesablauf(ohne).map((x) => x.kurs.name), ohne.kurse.map((k) => k.name));
+});
+
+test("baueDigest: Tag, an dem alles entfällt, erscheint in der Vorschau; Kopfzeile sagt es", () => {
+  const d = baueDigest(new Date(2026, 8, 16, 20, 0),
+    { eintraege: [], stundenplan: stundenplanFixture(), kurszuordnung: zuordnung, einstellungen: {} });
+  assert.equal(d.datum, "2026-09-17");
+  assert.deepEqual(d.kurse, []);
+  assert.deepEqual(tagesablauf(d).map((x) => [x.art, x.kurs.name]), [["entfall", "Deutsch"], ["entfall", "Englisch"]]);
+  assert.equal(digestKopfzeile(d), "2 Kurse entfallen");
+  assert.equal(digestKopfzeile({ ...d, entfallen: d.entfallen.slice(0, 1) }), "1 Kurs entfällt");
 });
 
 // ---------------------------------------------------------------------------

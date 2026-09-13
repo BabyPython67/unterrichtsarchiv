@@ -73,7 +73,7 @@ test("EmpfangsQuelle: ohne Öffner kein Handshake, aber Listener bleibt harmlos"
   assert.equal(q.timer, null);
 });
 
-test("EmpfangsQuelle: mit Öffner, aber ohne ?empfang (Neuladen über „Zum Unterrichtsarchiv“) kein Warten, Daten kämen trotzdem an", () => {
+test("EmpfangsQuelle: mit Öffner, aber ohne ?empfang kein Warten, Daten kämen trotzdem an", () => {
   const f = fensterBauen({ search: "" });
   const q = new EmpfangsQuelle(f);
   const aufrufe = [];
