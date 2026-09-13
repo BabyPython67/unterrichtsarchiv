@@ -14,13 +14,22 @@ Wie die App funktioniert, wie sie gebaut und geprüft wird. Für die Benutzung r
 2. Im Schulmanager einloggen und dort das Lesezeichen anklicken. Es öffnet den Viewer in einem
    neuen Tab, holt Inhalte, Hausaufgaben und Stundenplan mit der bestehenden Sitzung ab und
    schickt sie per `postMessage` an den Viewer. Oben rechts im Schulmanager-Tab erscheint eine
-   Statusbox mit „Meldung kopieren“ für Fehlermeldungen.
+   Statusbox mit „Meldung kopieren“ für Fehlermeldungen. Bestätigt der Viewer den Empfang,
+   erscheint dort der Link „Zum Unterrichtsarchiv“ (Ziel: das benannte Fenster
+   `unterrichtsarchiv`). iOS-Safari lässt den neuen Tab im Hintergrund, der Link holt ihn nach
+   vorn und lädt ihn dabei neu. Weil der Viewer nur mit `?empfang=1` auf Daten wartet, startet
+   dieses Neuladen keinen zweiten Handshake.
 3. Kommt der Viewer nicht an die Daten (Popup blockiert, 15 s ohne Antwort), lädt das
    Lesezeichen stattdessen `unterricht-JJJJ-MM-TT.json` herunter. Diese Datei im Viewer unter
    Einstellungen → Daten → „Importieren“ einlesen. Dasselbe funktioniert mit Export-Dateien des
    Viewers.
 
-Der Viewer ist als PWA installierbar („Zum Startbildschirm“). Der Service Worker cached nur
+Das Manifest steht bewusst auf `display: browser`, `apple-mobile-web-app-capable` fehlt. Eine
+iOS-Web-App vom Home-Bildschirm hat einen eigenen Speicher, getrennt von Safari, und bekäme vom
+Lesezeichen nie Daten (am 2026-09-13 auf dem iPhone bestätigt). Ein Symbol auf dem Home-Bildschirm
+soll deshalb Safari öffnen; die Anleitung sagt, den Schalter „Als Web-App öffnen“ auszuschalten.
+Läuft der Viewer trotzdem als iOS-Web-App (`navigator.standalone`), zeigt er oben einen Hinweis
+mit den Schritten; lokal lässt er sich mit `?webapp=1` ansehen. Der Service Worker cached nur
 die App-Dateien, nie Nutzerdaten; nach jedem Deploy mit geänderter Shell bekommt er einen
 neuen Cache-Namen und räumt den alten weg. `install.html` und der Lesezeichen-Code werden bei
 bestehender Verbindung immer frisch geholt, damit nach einem Update nie ein altes Lesezeichen

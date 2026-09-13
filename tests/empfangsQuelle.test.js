@@ -5,11 +5,11 @@ import { NACHRICHT, SCHULMANAGER_ORIGIN } from "../quellen/quelle.js";
 import { HUELLE_TYP } from "../kern/rohantwort.js";
 
 /** Nachgebautes Fenster: opener sammelt gesendete Nachrichten, message-Events werden von Hand ausgelöst. */
-function fensterBauen({ hostname = "babypython67.github.io", mitOpener = true } = {}) {
+function fensterBauen({ hostname = "babypython67.github.io", search = "?empfang=1", mitOpener = true } = {}) {
   const listener = [];
   const opener = mitOpener ? { gesendet: [], postMessage(msg, ziel) { this.gesendet.push({ msg, ziel }); } } : null;
   return {
-    location: { hostname },
+    location: { hostname, search },
     opener,
     addEventListener(typ, fn) { if (typ === "message") listener.push(fn); },
     feuern(ev) { for (const fn of listener) fn(ev); },
@@ -71,6 +71,19 @@ test("EmpfangsQuelle: ohne Öffner kein Handshake, aber Listener bleibt harmlos"
   f.feuern({ origin: SCHULMANAGER_ORIGIN, source: {}, data: { typ: HUELLE_TYP, roh: {} } });
   assert.deepEqual(aufrufe, []);
   assert.equal(q.timer, null);
+});
+
+test("EmpfangsQuelle: mit Öffner, aber ohne ?empfang (Neuladen über „Zum Unterrichtsarchiv“) kein Warten, Daten kämen trotzdem an", () => {
+  const f = fensterBauen({ search: "" });
+  const q = new EmpfangsQuelle(f);
+  const aufrufe = [];
+  q.starten({ onDaten: (d) => { aufrufe.push(d); return null; }, onFehler: () => {}, onWarten: (l) => aufrufe.push({ warten: l }) });
+  assert.deepEqual(aufrufe, []);
+  assert.deepEqual(f.opener.gesendet, []);
+  assert.equal(q.timer, null);
+  const huelle = { typ: HUELLE_TYP, roh: {} };
+  f.feuern({ origin: SCHULMANAGER_ORIGIN, source: f.opener, data: huelle });
+  assert.deepEqual(aufrufe, [huelle]);
 });
 
 test("EmpfangsQuelle: lokal (localhost) sind Attrappen-Origins erlaubt, sonst nicht", () => {

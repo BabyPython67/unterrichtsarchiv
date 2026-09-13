@@ -171,6 +171,27 @@ function renderMeldung() {
   box.append(text, el("button", { type: "button", onclick: () => { zustand.meldung = null; renderMeldung(); } }, "Schließen"));
 }
 
+/** iOS-Web-App vom Home-Bildschirm: eigener Speicher, getrennt von Safari, das Lesezeichen schreibt
+ * nie hierher. Einmal beim Start, damit ein aufgeklappter Bereich beim Rendern offen bleibt. */
+function renderWebAppHinweis() {
+  const box = $("webapp-hinweis");
+  box.textContent = "";
+  box.append(
+    el("p", {}, el("b", { text: "Diese App vom Home-Bildschirm bekommt keine Daten vom Lesezeichen." }), " Sie hat einen eigenen Speicher, getrennt von Safari."),
+    el("details", {},
+      el("summary", { text: "So wird es behoben" }),
+      el("ol", {},
+        el("li", { text: "Falls hier Einträge liegen, zuerst sichern: Einstellungen → Daten → Exportieren." }),
+        el("li", { text: "Dieses Symbol vom Home-Bildschirm entfernen." }),
+        el("li", { text: `In Safari ${location.host}${location.pathname} öffnen.` }),
+        el("li", { text: "Teilen → „Zum Home-Bildschirm“, den Schalter „Als Web-App öffnen“ ausschalten, „Hinzufügen“." }),
+        el("li", { text: "Falls gesichert: die Datei dort einlesen, Einstellungen → Daten → Importieren." }),
+      ),
+    ),
+  );
+  box.hidden = false;
+}
+
 /** Leerzustand ohne Daten: gleiche Anleitung im Archiv und in der Vorschau. */
 function leerHinweis() {
   return el("div", { class: "leer-hinweis" },
@@ -832,9 +853,14 @@ verdrahten();
 render();
 if (zustand.speicherFehler) melden("fehler", zustand.speicherFehler);
 
+const lokal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const parameter = new URLSearchParams(location.search);
+
+// navigator.standalone gibt es nur auf iOS; lokal lässt sich der Hinweis mit ?webapp=1 ansehen.
+if (navigator.standalone === true || (lokal && parameter.has("webapp"))) renderWebAppHinweis();
+
 // PWA-Hülle: nur die App-Shell wird gecacht (siehe sw.js). Lokal beim Entwickeln nicht
 // registrieren, sonst liefert der Cache alte Dateien; mit ?sw=1 lässt es sich erzwingen.
-const lokal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-if ("serviceWorker" in navigator && (!lokal || new URLSearchParams(location.search).has("sw"))) {
+if ("serviceWorker" in navigator && (!lokal || parameter.has("sw"))) {
   navigator.serviceWorker.register("./sw.js").catch(() => { /* ohne SW läuft alles trotzdem */ });
 }

@@ -10,7 +10,8 @@ Was war in Mathe seit der letzten Klausur dran?
 ## Neu seit der ersten Version
 
 **Zuerst: Lesezeichen neu anlegen.** Auf der Lesezeichen-Seite das Lesezeichen noch einmal
-anlegen, genau wie beim ersten Mal. Das alte kann weg, es holt den Stundenplan nicht mit. Ob die
+anlegen, genau wie beim ersten Mal. Das alte kann weg: Es holt den Stundenplan nicht mit und hat
+noch keinen Knopf, der danach zur App wechselt. Ob die
 aktuelle Version installiert ist, zeigt die Build-Kennung: Sie steht auf der Lesezeichen-Seite und
 in der Box, die nach dem Antippen im Schulmanager erscheint. Stimmen beide überein, passt es.
 
@@ -55,13 +56,19 @@ zeigt den aktuellen Stand, die Details kommen nach dem Antippen.
 1. Die [Lesezeichen-Seite](https://babypython67.github.io/unterrichtsarchiv/install.html) öffnen
    und der Anleitung für das eigene Gerät folgen (Computer, iPhone/iPad oder Android).
 2. Im Schulmanager einloggen.
-3. Dort das Lesezeichen antippen. Die App öffnet sich in einem neuen Tab und übernimmt die Daten.
+3. Dort das Lesezeichen antippen. Die App öffnet sich in einem eigenen Tab und übernimmt die Daten.
+   Bleibt der Schulmanager vorn, führt „Zum Unterrichtsarchiv“ in der Box oben rechts zur App.
 
 Die App holt nichts von selbst. Das Lesezeichen also ab und zu antippen, zum Beispiel einmal pro
 Woche. Was einmal im Archiv ist, bleibt dort, auch wenn es im Schulmanager später verschwindet.
 
-Am Handy lässt sich die App zum Startbildschirm hinzufügen. Dann öffnet sie sich wie eine normale
-App.
+### Am iPhone
+
+- Das Lesezeichen in den **Favoriten** ablegen. Dann erscheint es als Kachel, sobald man im
+  Schulmanager in die Adressleiste tippt.
+- Symbol auf dem Home-Bildschirm: die App in Safari öffnen, Teilen → „Zum Home-Bildschirm“ und
+  dabei den Schalter **„Als Web-App öffnen“ ausschalten**. Ist er an, hat das Symbol einen eigenen
+  Speicher und bekommt keine Daten vom Lesezeichen.
 
 ## Daten
 
@@ -79,6 +86,9 @@ App.
   Dann die App selbst öffnen und die Datei einlesen: Einstellungen → Daten → Importieren.
 - **Kein Stundenplan in der Vorschau:** Das Lesezeichen ist noch das alte. Neu anlegen und die
   Build-Kennung vergleichen.
+- **Die App auf dem Home-Bildschirm bleibt leer:** Sie wurde als Web-App hinzugefügt und hat einen
+  eigenen Speicher. Falls dort Einträge liegen, erst exportieren. Dann das Symbol entfernen und neu
+  hinzufügen, diesmal mit „Als Web-App öffnen“ aus.
 - **Fehlermeldung im Schulmanager:** Oben rechts steht eine Box mit „Meldung kopieren“. Den Text
   an mich schicken.
 

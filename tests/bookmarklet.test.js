@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { findeAssociatedStudents, findeBundleVersion, siehtNachJwtAus, findeJwt, dateinameFuerDatum, pruefeAntwortStatus, zaehleDatensaetze, datensaetzeJeTeil, stundenplanFenster, anfragenBauen, jwtNutzlast, schuelerAusSpeicher, apiPfade, feldnamen, sitzungsFelder } from "../bookmarklet/helfer.js";
 import { bookmarkletBauen, bookmarkletModul, codeVerdichten, STANDARD, WURZEL } from "../tools/build.mjs";
-import { originErlaubt, bereitZiele } from "../quellen/empfangsQuelle.js";
+import { originErlaubt, bereitZiele, empfangErwartet } from "../quellen/empfangsQuelle.js";
 import { STUNDENPLAN_ENDPOINT, STUNDENPLAN_MODUL } from "../kern/stundenplan.js";
 import { ENDPOINTS } from "../quellen/quelle.js";
 import { kombiniert, kombiniert3 } from "./hilfen.js";
@@ -112,6 +112,23 @@ test("empfangsQuelle: Origin-Prüfung streng, lokal nur auf localhost gelockert"
   assert.deepEqual(bereitZiele(prod), ["https://login.schulmanager-online.de"]);
   assert.equal(bereitZiele(lokal).length, 3);
   assert.equal(WURZEL.length > 0, true);
+});
+
+test("empfangErwartet: nur mit ?empfang, damit Neuladen über den Link nicht auf Daten wartet", () => {
+  assert.equal(empfangErwartet({ hostname: "x", search: "?empfang=1" }), true);
+  assert.equal(empfangErwartet({ hostname: "x", search: "?sw=1&empfang" }), true);
+  assert.equal(empfangErwartet({ hostname: "x", search: "" }), false);
+  assert.equal(empfangErwartet({ hostname: "x", search: "?empfangen=1" }), false);
+  assert.equal(empfangErwartet(null), false);
+});
+
+test("Lesezeichen: „Zum Unterrichtsarchiv“ zielt auf dasselbe Fenster wie window.open, ohne ?empfang", () => {
+  const src = readFileSync(new URL("../bookmarklet/src.js", import.meta.url), "utf8");
+  const offen = /window\.open\(VIEWER_URL \+ "\?empfang=1", "([^"]+)"\)/.exec(src);
+  const ziel = /zumArchiv\.target = "([^"]+)";/.exec(src);
+  assert.ok(offen && ziel, "window.open oder Link-Ziel nicht gefunden");
+  assert.equal(ziel[1], offen[1]);
+  assert.match(src, /zumArchiv\.href = VIEWER_URL;/);
 });
 
 function jwtBauen(nutzlast) {

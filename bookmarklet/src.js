@@ -53,6 +53,13 @@
     p.then(() => log("(kopiert)"), () => window.prompt("Zum Kopieren markieren:", t));
   });
   kopieren.hidden = true;
+  // Link zum Viewer-Tab, erscheint nach der Bestätigung. iOS-Safari öffnet den Viewer im Hintergrund
+  // und bleibt im Schulmanager; ein Tipp holt den benannten Tab nach vorn (lädt neu, Daten sind gespeichert).
+  const zumArchiv = document.createElement("a");
+  zumArchiv.href = VIEWER_URL;
+  zumArchiv.target = "unterrichtsarchiv";
+  zumArchiv.textContent = "Zum Unterrichtsarchiv";
+  zumArchiv.setAttribute("style", "font:inherit;font-weight:600;padding:6px 10px;border:1px solid #1f4e79;border-radius:8px;background:#1f4e79;color:#ffffff;text-decoration:none;cursor:pointer;");
   leiste.append(kopieren, knopf("Schließen", () => box.remove()));
   box.append(titel, protokoll, leiste);
   document.body.append(box);
@@ -73,7 +80,10 @@
   window.addEventListener("message", (ev) => {
     if (ev.origin !== VIEWER_ORIGIN || !ev.data || typeof ev.data !== "object") return;
     if (ev.data.typ === TYP.bereit) bereitMelden(true);
-    if (ev.data.typ === TYP.empfangen) log("Viewer: " + ev.data.neu + " neu, " + ev.data.geaendert + " geändert, " + ev.data.unveraendert + " unverändert.");
+    if (ev.data.typ === TYP.empfangen) {
+      log("Viewer: " + ev.data.neu + " neu, " + ev.data.geaendert + " geändert, " + ev.data.unveraendert + " unverändert.");
+      leiste.prepend(zumArchiv);
+    }
   });
   const warte = (ms) => new Promise((r) => setTimeout(() => r(false), ms));
 

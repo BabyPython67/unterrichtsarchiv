@@ -506,6 +506,13 @@ input[type="time"] {
 .hinweis.fehler { background: var(--fehler-bg); color: var(--fehler-fg); }
 .hinweis a { color: inherit; font-weight: 600; margin-left: 6px; white-space: nowrap; }
 
+/* Hinweis in der iOS-Web-App vom Home-Bildschirm (eigener Speicher, bekommt keine Daten) */
+.app-hinweis { margin: 12px 16px 0; }
+.app-hinweis p { margin: 0; }
+.app-hinweis summary { margin-top: 6px; font-weight: 600; cursor: pointer; }
+.app-hinweis ol { margin: 6px 0 0; padding-left: 20px; }
+.app-hinweis li { margin: 4px 0; }
+
 .karte {
   margin-top: 12px;
   padding: 14px;

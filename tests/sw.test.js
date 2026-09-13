@@ -22,6 +22,13 @@ test("sw.js: Version ist gestempelt und passt zum Inhalt der Shell (sonst: npm r
   assert.equal(m[1], shellVersion(WURZEL));
 });
 
+test("Home-Bildschirm öffnet Safari: keine iOS-Web-App mit eigenem, leerem Speicher", () => {
+  const manifest = JSON.parse(readFileSync(new URL("../manifest.json", import.meta.url), "utf8"));
+  assert.equal(manifest.display, "browser");
+  const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(!/web-app-capable/.test(index), "index.html darf keine *-web-app-capable-Meta haben");
+});
+
 test("swStempeln ersetzt genau die VERSION-Zeile", () => {
   assert.equal(swStempeln('x\nconst VERSION = "dev";\ny', "abc123"), 'x\nconst VERSION = "abc123";\ny');
   assert.throws(() => swStempeln("nix", "abc"), /VERSION/);

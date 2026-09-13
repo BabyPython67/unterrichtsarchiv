@@ -1,6 +1,6 @@
 // Empfang per postMessage vom Bookmarklet im Schulmanager-Tab.
 //
-// Ablauf: Das Bookmarklet öffnet den Viewer per window.open. Sobald der Viewer geladen ist,
+// Ablauf: Das Bookmarklet öffnet den Viewer per window.open mit ?empfang=1. Sobald der Viewer geladen ist,
 // meldet er dem Öffner "bereit" (wiederholt, bis Daten da sind). Das Bookmarklet schickt
 // daraufhin die Rohdaten-Hülle; der Viewer bestätigt mit "empfangen" und den Zählern.
 //
@@ -24,6 +24,12 @@ export function bereitZiele(location) {
   const ziele = [SCHULMANAGER_ORIGIN];
   if (istLokal(location)) ziele.push("http://localhost:8081", "http://127.0.0.1:8081");
   return ziele;
+}
+
+/** Nur der Aufruf mit ?empfang=1 (so öffnet ihn das Lesezeichen) wartet auf Daten. Lädt der
+ * Tab über „Zum Unterrichtsarchiv“ neu, hat er weiter einen Öffner, soll aber nicht warten. */
+export function empfangErwartet(location) {
+  return !!location && new URLSearchParams(location.search || "").has("empfang");
 }
 
 export function originErlaubt(origin, location) {
@@ -62,7 +68,7 @@ export class EmpfangsQuelle {
       }
     });
 
-    if (!fenster.opener) return;
+    if (!fenster.opener || !empfangErwartet(fenster.location)) return;
     onWarten(true);
     const ziele = bereitZiele(fenster.location);
     const senden = () => {
