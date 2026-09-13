@@ -21,7 +21,6 @@
     <div class="kopf-zeile">
       <h1>Unterrichtsarchiv</h1>
       <div class="kopf-knoepfe">
-        <button type="button" id="knopf-import">Importieren</button>
         <button type="button" id="knopf-einstellungen" aria-pressed="false">Einstellungen</button>
       </div>
     </div>
@@ -35,16 +34,17 @@
   <div id="meldung" class="meldung" role="status" hidden></div>
 
   <div id="liste-bereich">
-    <section class="klausur" id="klausur" aria-label="Seit letzter Klausur"></section>
-
     <nav class="kurse" id="kursleiste" aria-label="Kurse"></nav>
 
     <div class="werkzeuge" id="werkzeuge">
       <input type="search" id="suche" placeholder="Suchen, z. B. Ableitung" autocomplete="off" aria-label="Suche">
       <label class="feld"><span>ab</span><input type="date" id="ab" aria-label="Ab Datum"></label>
       <button type="button" id="nur-ha" aria-pressed="false">nur mit Hausaufgabe</button>
+      <button type="button" id="seit-klausur" aria-pressed="false">Seit letzter Klausur</button>
       <button type="button" id="reset">Zurücksetzen</button>
     </div>
+
+    <section class="klausur" id="klausur" aria-label="Seit letzter Klausur" hidden></section>
 
     <main id="ausgabe"></main>
   </div>

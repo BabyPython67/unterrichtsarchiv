@@ -426,3 +426,18 @@ export function syncStatus(sync, jetzt, einstellungen) {
   if (tage > einst.syncWarnungNachTagen) return { art: "warn", text: `Letzter Abruf ${vorTagenText(tage)}, evtl. veraltet` };
   return { art: "ok", text: `Letzter Abruf ${vorTagenText(tage)}` };
 }
+
+/**
+ * Statuszeile unter der Herkunft-Zeile der Vorschau. Ein Fehler kommt als art "fehler" zurück
+ * (die Oberfläche zeigt dann eine Box), alles andere als leise Zeile. null, wenn die
+ * Herkunft-Zeile denselben Abruf schon nennt: Tag gemessen und Stundenplan am selben Tag
+ * geholt wie der letzte erfolgreiche Abruf.
+ */
+export function syncZeile(digest, stundenplan, sync, jetzt, einstellungen) {
+  const s = syncStatus(sync, jetzt, einstellungen);
+  if (s.art === "fehler") return s;
+  const am = stundenplan && stundenplan.abgerufenAm;
+  const erfolg = sync && sync.letzterErfolg;
+  if (digest && digest.herkunft === "gemessen" && am && erfolg && am.slice(0, 10) === erfolg.slice(0, 10)) return null;
+  return s;
+}

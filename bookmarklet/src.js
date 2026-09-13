@@ -117,7 +117,7 @@
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    log("Datei " + a.download + " heruntergeladen. Im Viewer auf „Importieren“ tippen und diese Datei wählen: " + VIEWER_URL);
+    log("Datei " + a.download + " heruntergeladen. Im Viewer unter Einstellungen → Daten → „Importieren“ diese Datei wählen: " + VIEWER_URL);
   }
 
   // Diagnose ohne Nutzerdaten: Schlüsselnamen, ob ein Token da ist, welche API-Pfade die

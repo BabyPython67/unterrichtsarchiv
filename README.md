@@ -22,8 +22,12 @@ Lesezeichen anlegen: <https://babypython67.github.io/unterrichtsarchiv/install.h
    `postMessage` an den Viewer. Oben rechts im Schulmanager-Tab erscheint eine Statusbox mit
    „Meldung kopieren“ für Fehlermeldungen.
 3. Kommt der Viewer nicht an die Daten (Popup blockiert, 15 s ohne Antwort), lädt das
-   Lesezeichen stattdessen `unterricht-JJJJ-MM-TT.json` herunter. Diese Datei im Viewer über
-   „Importieren“ einlesen. Dasselbe funktioniert mit Export-Dateien des Viewers.
+   Lesezeichen stattdessen `unterricht-JJJJ-MM-TT.json` herunter. Diese Datei im Viewer unter
+   Einstellungen → Daten → „Importieren“ einlesen. Dasselbe funktioniert mit Export-Dateien des
+   Viewers.
+
+Die Einstellungen sind eine Übersicht mit einer Zeile je Thema (Beim Öffnen, Kurse, Vorschau,
+Daten), jeweils mit dem aktuellen Stand darunter. Details stehen auf Unterseiten.
 
 Der Viewer ist als PWA installierbar („Zum Startbildschirm“). Der Service Worker cached nur
 die App-Dateien, nie Nutzerdaten; nach jedem Deploy mit geänderter Shell bekommt er einen
@@ -39,7 +43,7 @@ den heutigen Tag, danach den nächsten. Wochenenden, freie Tage und Tage ohne Ku
 übersprungen, höchstens 14 Tage weit. Je Kurs steht die Hausaufgabe zuerst und in voller
 Schrift, darunter das letzte Thema und wann der Eintrag war. Liegt der letzte Eintrag länger
 als 21 Tage zurück, ist das Datum markiert. Die Pfeile blättern zu weiteren Schultagen. In den
-Einstellungen lässt sich die Vorschau als Startansicht wählen.
+Einstellungen („Beim Öffnen“) lässt sich die Vorschau als Startansicht wählen.
 
 Woher die Vorschau weiß, welche Kurse an einem Tag sind, steht in der Zeile unter dem Datum:
 
@@ -48,13 +52,15 @@ Woher die Vorschau weiß, welche Kurse an einem Tag sind, steht in der Zeile unt
    Kurse stehen in der Reihenfolge des Tages, entfallene Stunden durchgestrichen, Vertretungen
    markiert. Fächer aus dem Stundenplan werden den Kursen im Archiv zugeordnet: gleiche Namen
    automatisch, sonst fragt die Karte nach. „Nicht anzeigen“ blendet ein Fach in der Vorschau
-   aus (Einstellungen → Fächer im Stundenplan).
+   aus (Einstellungen → Vorschau → Fächer im Stundenplan).
 2. **Abgeleitet**: aus den Einträgen der letzten 56 Tage, also welcher Kurs an welchem Wochentag
    regelmäßig Einträge hatte. Unsichere Treffer sind markiert.
-3. **Manuell**: in den Einstellungen lässt sich je Wochentag ein Kurs fest setzen oder
-   ausschließen. Das gewinnt gegen die Ableitung.
+3. **Manuell**: unter Einstellungen → Vorschau → Wochenplan lässt sich je Wochentag ein Kurs
+   fest setzen oder ausschließen. Das gewinnt gegen die Ableitung.
 
-Die Vorschau warnt, wenn der letzte Abruf älter als drei Tage ist. Sie zeigt weder Stundennummer
+Darunter steht leise, wann zuletzt abgerufen wurde, ab drei Tagen als „evtl. veraltet“ markiert.
+Nennt die Herkunft-Zeile denselben Abruf schon, entfällt die Zeile. Ist der letzte Abruf
+fehlgeschlagen, erscheint stattdessen ein roter Hinweis mit Link zum Schulmanager. Sie zeigt weder Stundennummer
 noch Uhrzeit; die Nummer aus dem Stundenplan bestimmt nur die Reihenfolge.
 
 ## Aufbau

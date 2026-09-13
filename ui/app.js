@@ -5,7 +5,11 @@
 import { lesen, schreiben, loeschen, defektSichern, exportText, exportDateiname, leererBestand } from "../kern/speicher.js";
 import { importieren } from "../kern/importieren.js";
 import { filtern, gruppieren, kurseZaehlen, kurseSortiert, anzeigename, zerlegen, wochentag, datumLesbar, WOCHENTAGE } from "../kern/filtern.js";
-import { baueDigest, digestKopfzeile, herkunftZeile, syncStatus, planFunktion, schultagSuchen, datumPlus, isoDatum, vorTagenText, ermittleWochenplan, mitStandard } from "../kern/logik.js";
+import { baueDigest, digestKopfzeile, herkunftZeile, syncZeile, planFunktion, schultagSuchen, datumPlus, isoDatum, vorTagenText, ermittleWochenplan, mitStandard } from "../kern/logik.js";
+import {
+  kurseZusammenfassung, vorschauZusammenfassung, wochenplanZusammenfassung, freieTageZusammenfassung,
+  faecherImStundenplan, faecherZusammenfassung, datenZusammenfassung,
+} from "../kern/zusammenfassung.js";
 import { SCHULMANAGER_ORIGIN } from "../quellen/quelle.js";
 import { DateiQuelle } from "../quellen/dateiQuelle.js";
 import { EmpfangsQuelle } from "../quellen/empfangsQuelle.js";
@@ -46,6 +50,7 @@ const zustand = {
   filter: FILTER_LEER(),
   ansicht: "archiv",      // "archiv" | "vorschau" | "einstellungen"
   vorher: "archiv",       // wohin „Zurück“ aus den Einstellungen führt
+  seite: [],              // Unterseite der Einstellungen, siehe renderEinstellungen
   vorschauDatum: null,    // null = nächster Schultag automatisch, sonst per Pfeil gewählter Tag
   meldung: null,
 };
@@ -109,6 +114,7 @@ function render() {
   $("knopf-einstellungen").setAttribute("aria-pressed", String(a === "einstellungen"));
   $("reiter-archiv").setAttribute("aria-pressed", String(a === "archiv"));
   $("reiter-vorschau").setAttribute("aria-pressed", String(a === "vorschau"));
+  $("stand").hidden = a !== "archiv";
   $("liste-bereich").hidden = a !== "archiv";
   $("vorschau").hidden = a !== "vorschau";
   $("einstellungen").hidden = a !== "einstellungen";
@@ -117,15 +123,17 @@ function render() {
   } else if (a === "vorschau") {
     renderVorschau();
   } else {
-    renderKlausur();
     renderKurse();
     renderWerkzeuge();
+    renderKlausur();
     renderListe();
   }
 }
 
-function ansichtWechseln(ziel) {
-  if (ziel !== "einstellungen") zustand.vorher = ziel;
+/** seite gilt nur beim Wechsel in die Einstellungen: [] ist die Übersicht. */
+function ansichtWechseln(ziel, seite = []) {
+  if (ziel === "einstellungen") zustand.seite = seite;
+  else zustand.vorher = ziel;
   zustand.ansicht = ziel;
   render();
 }
@@ -178,19 +186,15 @@ function leerHinweis() {
 
 // ---- Archiv ----------------------------------------------------------------
 
+/** Zeile unter den Werkzeugen, nur bei eingeschaltetem „Seit letzter Klausur“. Datumsfeld nur mit gewähltem Kurs. */
 function renderKlausur() {
   const box = $("klausur");
   box.textContent = "";
   const { filter } = zustand;
   const { klausurschnitt, kursAlias, eintraege } = zustand.bestand;
-  box.classList.toggle("aktiv", filter.seitKlausur);
-
-  const knopf = el("button", {
-    type: "button", class: "gross", "aria-pressed": String(filter.seitKlausur),
-    onclick: () => { filter.seitKlausur = !filter.seitKlausur; renderKlausur(); renderListe(); },
-  }, "Seit letzter Klausur");
-
-  const zeile = el("div", { class: "klausur-zeile" }, knopf);
+  $("seit-klausur").setAttribute("aria-pressed", String(filter.seitKlausur));
+  box.hidden = !filter.seitKlausur || !eintraege.length;
+  if (box.hidden) return;
 
   if (filter.kurs) {
     const datum = klausurschnitt[filter.kurs] || "";
@@ -203,7 +207,7 @@ function renderKlausur() {
       renderKlausur();
       renderListe();
     });
-    zeile.append(
+    box.append(
       el("label", { class: "feld" }, el("span", { text: `${name}: Klausur am` }), eingabe),
       el("p", { class: "info", text: datum
         ? `Zeigt alles ab dem ${datumLesbar(datum)}.`
@@ -212,11 +216,8 @@ function renderKlausur() {
   } else {
     const alle = Object.keys(kurseZaehlen(eintraege));
     const mitDatum = alle.filter((k) => klausurschnitt[k]).length;
-    zeile.append(el("p", { class: "info", text: alle.length
-      ? `Je Kurs ab dem eingetragenen Klausurdatum. ${mitDatum} von ${alle.length} Kursen haben eins — Kurs antippen, um es zu setzen.`
-      : "Sobald Einträge da sind, lässt sich je Kurs ein Klausurdatum setzen." }));
+    box.append(el("p", { class: "info", text: `Je Kurs ab dem eingetragenen Klausurdatum. ${mitDatum} von ${alle.length} Kursen haben eins. Kurs antippen, um es zu setzen.` }));
   }
-  box.append(zeile);
 }
 
 function renderKurse() {
@@ -243,6 +244,7 @@ function renderWerkzeuge() {
   if ($("suche").value !== filter.suche) $("suche").value = filter.suche;
   if ($("ab").value !== filter.abDatum) $("ab").value = filter.abDatum;
   $("nur-ha").setAttribute("aria-pressed", String(filter.nurHausaufgabe));
+  $("seit-klausur").setAttribute("aria-pressed", String(filter.seitKlausur));
 }
 
 function hervorheben(text, begriff) {
@@ -309,7 +311,7 @@ function renderVorschau() {
     box.append(el("div", { class: "leer-hinweis" },
       el("h2", { text: digest.label }),
       el("p", { text: "Entweder sind alle Tage als frei eingetragen, oder das Archiv hat für keinen Wochentag genug Einträge. Kurse lassen sich je Wochentag fest setzen." }),
-      el("div", { class: "knoepfe" }, el("button", { type: "button", onclick: () => ansichtWechseln("einstellungen") }, "Einstellungen")),
+      el("div", { class: "knoepfe" }, el("button", { type: "button", onclick: () => ansichtWechseln("einstellungen", ["vorschau", "wochenplan"]) }, "Wochenplan")),
     ));
     return;
   }
@@ -333,15 +335,19 @@ function renderVorschau() {
     pfeil(1, "Nächster Schultag"),
   ));
   box.append(el("p", { class: "herkunft", text: herkunftZeile(digest, bestand.stundenplan, jetzt, einst) }));
+
+  // Abrufstand leise unter der Herkunft; eine Box nur, wenn der letzte Abruf wirklich fehlschlug.
+  const sync = syncZeile(digest, bestand.stundenplan, bestand.sync, jetzt, einst);
+  if (sync && sync.art === "fehler") {
+    box.append(el("div", { class: "hinweis fehler" },
+      sync.text, el("a", { href: `${SCHULMANAGER_ORIGIN}/`, target: "_blank", rel: "noopener" }, "Schulmanager öffnen")));
+  } else if (sync) {
+    box.append(el("p", { class: `herkunft${sync.art === "warn" ? " alt" : ""}`, text: sync.text }));
+  }
+
   if (zustand.vorschauDatum) {
     box.append(el("div", { class: "knopfreihe mitte" },
       el("button", { type: "button", onclick: () => { zustand.vorschauDatum = null; renderVorschau(); } }, "Zum nächsten Schultag")));
-  }
-
-  const sync = syncStatus(bestand.sync, jetzt, einst);
-  if (sync.art !== "ok") {
-    box.append(el("div", { class: `hinweis ${sync.art === "fehler" ? "fehler" : "warn"}` },
-      sync.text, el("a", { href: `${SCHULMANAGER_ORIGIN}/`, target: "_blank", rel: "noopener" }, "Schulmanager öffnen")));
   }
 
   if (!digest.kurse.length) {
@@ -405,68 +411,132 @@ function zuordnungKarte(k) {
 }
 
 // ---- Einstellungen ---------------------------------------------------------
+//
+// Übersicht mit einer Zeile je Thema und dem Zustand als Zusammenfassung, Details auf
+// Unterseiten. zustand.seite ist der Pfad: [] Übersicht, ["kurse"], ["kurse", kurs],
+// ["vorschau"], ["vorschau", "wochenplan" | "frei" | "faecher"], ["daten"].
 
 function renderEinstellungen() {
   const box = $("einstellungen");
   box.textContent = "";
-  const { bestand } = zustand;
-  const kurse = kurseSortiert(Object.keys(kurseZaehlen(bestand.eintraege)), bestand.kursAlias);
+  const [thema, unter] = zustand.seite;
+  if (thema === "kurse") return unter === undefined ? seiteKurse(box) : seiteKurs(box, unter);
+  if (thema === "vorschau" && unter === "wochenplan") return seiteWochenplan(box);
+  if (thema === "vorschau" && unter === "frei") return seiteFreieTage(box);
+  if (thema === "vorschau" && unter === "faecher") return seiteFaecher(box);
+  if (thema === "vorschau") return seiteVorschau(box);
+  if (thema === "daten") return seiteDaten(box);
+  return seiteUebersicht(box);
+}
 
-  box.append(el("div", { class: "knopfreihe" }, el("button", { type: "button", onclick: () => ansichtWechseln(zustand.vorher) }, zustand.vorher === "vorschau" ? "← Zurück zur Vorschau" : "← Zurück zum Archiv")));
-  box.append(el("h2", { text: "Einstellungen" }));
+function seiteOeffnen(pfad) {
+  zustand.seite = pfad;
+  renderEinstellungen();
+  window.scrollTo(0, 0);
+  const titel = $("einstellungen").querySelector(".seitenkopf h2");
+  if (titel) titel.focus({ preventScroll: true });
+}
+
+/** Zurück-Knopf mit dem Namen der Seite darüber, darunter der Titel. Gibt den Titel zurück. */
+function seitenKopf(box, zurueckName, zurueck, titel) {
+  const h = el("h2", { text: titel, tabindex: "-1" });
+  box.append(el("div", { class: "seitenkopf" },
+    el("button", { type: "button", class: "zurueck", onclick: zurueck }, `‹ ${zurueckName}`), h));
+  return h;
+}
+
+const gruppe = (...zeilen) => el("div", { class: "einst-gruppe" }, zeilen);
+
+/**
+ * Zeile einer Gruppe: Titel, darunter leise der Zustand. aktion ist eine Funktion (Knopf) oder
+ * ein Link-Ziel. Mit pfeil führt die Zeile auf eine Unterseite.
+ */
+function zeile(titel, wert, aktion, { pfeil = true, klasse = "" } = {}) {
+  const inhalt = [
+    el("span", { class: "einst-text" },
+      el("span", { class: "einst-titel", text: titel }),
+      wert ? el("span", { class: "einst-wert", text: wert }) : null),
+    pfeil ? el("span", { class: "einst-pfeil", "aria-hidden": "true", text: "›" }) : null,
+  ];
+  const cls = klasse ? `einst-zeile ${klasse}` : "einst-zeile";
+  return typeof aktion === "string"
+    ? el("a", { class: cls, href: aktion }, inhalt)
+    : el("button", { type: "button", class: cls, onclick: aktion }, inhalt);
+}
+
+/** Zeile mit Bedienelement rechts, ohne Unterseite. */
+const zeileMit = (titel, ...rechts) => el("div", { class: "einst-zeile" },
+  el("span", { class: "einst-text" }, el("span", { class: "einst-titel", text: titel })),
+  el("div", { class: "einst-rechts" }, rechts));
+
+function seiteUebersicht(box) {
+  const { bestand } = zustand;
+  const einst = bestand.einstellungen;
+  seitenKopf(box, zustand.vorher === "vorschau" ? "Vorschau" : "Archiv", () => ansichtWechseln(zustand.vorher), "Einstellungen");
 
   if (zustand.speicherFehler) {
     box.append(el("div", { class: "meldung fehler" }, el("div", { class: "text" }, el("p", { text: zustand.speicherFehler }))));
   }
 
-  box.append(el("h3", { text: "Kurse" }));
-  box.append(el("p", { text: "Anzeigename je Kurs (der Originalname bleibt gespeichert) und Datum der letzten Klausur." }));
-  if (!kurse.length) box.append(el("p", { text: "Noch keine Kurse — erst Daten abrufen oder importieren." }));
-  const tabelle = el("div", { class: "kurs-tabelle" });
-  for (const kurs of kurse) {
-    const alias = el("input", { type: "text", value: bestand.kursAlias[kurs] || "", placeholder: kurs, "aria-label": `Anzeigename für ${kurs}` });
-    alias.addEventListener("change", () => {
-      const v = alias.value.trim();
-      if (v && v !== kurs) bestand.kursAlias[kurs] = v; else delete bestand.kursAlias[kurs];
-      speichern(); renderStand();
-    });
-    const klausur = el("input", { type: "date", value: bestand.klausurschnitt[kurs] || "", "aria-label": `Klausurdatum für ${kurs}` });
-    klausur.addEventListener("change", () => {
-      if (klausur.value) bestand.klausurschnitt[kurs] = klausur.value; else delete bestand.klausurschnitt[kurs];
-      speichern();
-    });
-    tabelle.append(el("div", { class: "kurs-zeile" },
-      el("div", { class: "roh" }, anzeigename(kurs, bestand.kursAlias), bestand.kursAlias[kurs] ? el("small", { text: kurs }) : null),
-      el("label", {}, "Anzeigename", alias),
-      el("label", {}, "Letzte Klausur", klausur),
-    ));
-  }
-  box.append(tabelle);
-
-  renderEinstellungenVorschau(box, kurse);
-
-  box.append(el("h3", { text: "Daten" }));
-  box.append(el("p", { text: "Der Browser-Speicher ist flüchtig. Regelmäßig exportieren, die Datei lässt sich hier jederzeit wieder importieren." }));
-  box.append(el("div", { class: "knopfreihe" },
-    el("button", { type: "button", onclick: exportieren }, "Als JSON exportieren"),
-    el("button", { type: "button", onclick: () => dateiQuelle.oeffnen() }, "Datei importieren"),
-    el("button", { type: "button", class: "gefahr", onclick: archivLoeschen }, "Archiv löschen"),
-  ));
-
-  box.append(el("h3", { text: "Lesezeichen" }));
-  box.append(el("p", {}, "Das Lesezeichen holt die Daten aus dem eingeloggten Schulmanager-Tab. ", el("a", { href: "./install.html" }, "Anleitung und Installation")));
-}
-
-function renderEinstellungenVorschau(box, kurse) {
-  const { bestand } = zustand;
-  const einst = bestand.einstellungen;
-
-  box.append(el("h3", { text: "Vorschau" }));
   const start = (wert, text) => el("button", {
     type: "button", "aria-pressed": String(einst.startReiter === wert),
     onclick: () => { einst.startReiter = wert; speichern(); renderEinstellungen(); },
   }, text);
-  box.append(el("p", { text: "Ansicht beim Öffnen." }), el("div", { class: "knopfreihe" }, start("archiv", "Archiv"), start("vorschau", "Vorschau")));
+
+  box.append(gruppe(
+    zeileMit("Beim Öffnen", el("div", { class: "segment", role: "group", "aria-label": "Ansicht beim Öffnen" }, start("archiv", "Archiv"), start("vorschau", "Vorschau"))),
+    zeile("Kurse", kurseZusammenfassung(bestand), () => seiteOeffnen(["kurse"])),
+    zeile("Vorschau", vorschauZusammenfassung(einst), () => seiteOeffnen(["vorschau"])),
+    zeile("Daten", datenZusammenfassung(bestand), () => seiteOeffnen(["daten"])),
+  ));
+  box.append(gruppe(zeile("Archiv löschen", null, archivLoeschen, { pfeil: false, klasse: "gefahr" })));
+}
+
+function seiteKurse(box) {
+  const { bestand } = zustand;
+  const kurse = kurseSortiert(Object.keys(kurseZaehlen(bestand.eintraege)), bestand.kursAlias);
+  seitenKopf(box, "Einstellungen", () => seiteOeffnen([]), "Kurse");
+  if (!kurse.length) {
+    box.append(el("p", { text: "Noch keine Kurse. Erst Daten abrufen oder importieren." }));
+    return;
+  }
+  box.append(el("p", { text: "Anzeigename und Datum der letzten Klausur je Kurs." }));
+  box.append(gruppe(kurse.map((kurs) => {
+    const teile = [];
+    if (bestand.kursAlias[kurs]) teile.push(kurs);
+    if (bestand.klausurschnitt[kurs]) teile.push(`Klausur ${datumLesbar(bestand.klausurschnitt[kurs])}`);
+    return zeile(anzeigename(kurs, bestand.kursAlias), teile.join(" · "), () => seiteOeffnen(["kurse", kurs]));
+  })));
+}
+
+function seiteKurs(box, kurs) {
+  const { bestand } = zustand;
+  const titel = seitenKopf(box, "Kurse", () => seiteOeffnen(["kurse"]), anzeigename(kurs, bestand.kursAlias));
+
+  const alias = el("input", { type: "text", value: bestand.kursAlias[kurs] || "", placeholder: kurs, "aria-label": `Anzeigename für ${kurs}` });
+  alias.addEventListener("change", () => {
+    const v = alias.value.trim();
+    if (v && v !== kurs) bestand.kursAlias[kurs] = v; else delete bestand.kursAlias[kurs];
+    speichern();
+    renderStand();
+    titel.textContent = anzeigename(kurs, bestand.kursAlias);   // nicht neu rendern, sonst geht der Fokus verloren
+  });
+  box.append(el("label", { class: "einst-feld" }, el("span", { text: "Anzeigename" }), alias));
+  box.append(el("p", { text: "Anzeigename gilt nur für die Anzeige, der Originalname bleibt gespeichert." }));
+
+  const klausur = el("input", { type: "date", value: bestand.klausurschnitt[kurs] || "", "aria-label": `Klausurdatum für ${kurs}` });
+  klausur.addEventListener("change", () => {
+    if (klausur.value) bestand.klausurschnitt[kurs] = klausur.value; else delete bestand.klausurschnitt[kurs];
+    speichern();
+  });
+  box.append(el("label", { class: "einst-feld" }, el("span", { text: "Letzte Klausur" }), klausur));
+  box.append(el("p", { text: "Mit „Seit letzter Klausur“ zeigt das Archiv diesen Kurs ab dem Datum." }));
+}
+
+function seiteVorschau(box) {
+  const { bestand } = zustand;
+  const einst = bestand.einstellungen;
+  seitenKopf(box, "Einstellungen", () => seiteOeffnen([]), "Vorschau");
 
   const beginn = el("input", { type: "time", value: einst.schulbeginn, "aria-label": "Unterrichtsbeginn" });
   beginn.addEventListener("change", () => {
@@ -474,31 +544,23 @@ function renderEinstellungenVorschau(box, kurse) {
     einst.schulbeginn = beginn.value;
     speichern();
   });
-  box.append(el("p", { text: "Bis zu dieser Uhrzeit zeigt die Vorschau den heutigen Tag, danach den nächsten Schultag." }),
-    el("div", { class: "zeile-eingabe" }, el("label", { class: "feld" }, "Unterrichtsbeginn", beginn)));
+  box.append(gruppe(zeileMit("Unterrichtsbeginn", beginn)));
+  box.append(el("p", { text: "Bis zu dieser Uhrzeit zeigt die Vorschau den heutigen Tag, danach den nächsten Schultag." }));
 
-  // Fächer aus dem Stundenplan-Cache plus alles, was schon eine Zuordnung hat (auch außerhalb des Fensters).
-  const faecher = [...new Set([
-    ...Object.values(bestand.stundenplan.tage).flat().map((s) => s.fach),
-    ...Object.keys(bestand.kurszuordnung),
-  ])].sort((a, b) => a.localeCompare(b, "de"));
-  if (faecher.length) {
-    box.append(el("h3", { text: "Fächer im Stundenplan" }));
-    box.append(el("p", { text: "Jedes Fach aus dem Stundenplan gehört zu einem Kurs im Archiv. „Nicht anzeigen“ blendet es in der Vorschau aus." }));
-    const tabelle = el("div", { class: "kurs-tabelle" });
-    for (const fach of faecher) {
-      const zu = bestand.kurszuordnung[fach];
-      const hinweis = !zu ? "noch nicht zugeordnet" : zu.quelle === "auto" && !zu.bestaetigt ? "automatisch zugeordnet" : null;
-      tabelle.append(el("div", { class: "kurs-zeile zwei" },
-        el("div", { class: "roh" }, fach, hinweis ? el("small", { text: hinweis }) : null),
-        el("label", {}, "Kurs im Archiv", zuordnungAuswahl(fach, renderEinstellungen)),
-      ));
-    }
-    box.append(tabelle);
-  }
+  box.append(gruppe(
+    zeile("Wochenplan", wochenplanZusammenfassung(einst), () => seiteOeffnen(["vorschau", "wochenplan"])),
+    zeile("Freie Tage", freieTageZusammenfassung(einst), () => seiteOeffnen(["vorschau", "frei"])),
+    zeile("Fächer im Stundenplan", faecherZusammenfassung(bestand), () => seiteOeffnen(["vorschau", "faecher"])),
+  ));
+}
 
-  box.append(el("h3", { text: "Wochenplan" }));
+function seiteWochenplan(box) {
+  const { bestand } = zustand;
+  const einst = bestand.einstellungen;
+  const kurse = kurseSortiert(Object.keys(kurseZaehlen(bestand.eintraege)), bestand.kursAlias);
+  seitenKopf(box, "Vorschau", () => seiteOeffnen(["vorschau"]), "Wochenplan");
   box.append(el("p", { text: `Abgeleitet aus den Einträgen der letzten ${einst.wochenplan.fensterTage} Tage. Antippen wechselt: automatisch → fest → aus.` }));
+
   const abgeleitetAlle = ermittleWochenplan(bestand.eintraege, heuteIso(), { ...einst, wochenplan: { ...einst.wochenplan, overrides: {} } });
   const plan = el("div", { class: "wochenplan" });
   for (const tag of WOCHENTAGE.slice(0, 5)) {
@@ -527,8 +589,11 @@ function renderEinstellungenVorschau(box, kurse) {
     plan.append(el("div", { class: "wochenplan-tag" }, el("div", { class: "tag", text: tag }), chips));
   }
   box.append(plan);
+}
 
-  box.append(el("h3", { text: "Freie Tage" }));
+function seiteFreieTage(box) {
+  const einst = zustand.bestand.einstellungen;
+  seitenKopf(box, "Vorschau", () => seiteOeffnen(["vorschau"]), "Freie Tage");
   box.append(el("p", { text: "Ferien, Feiertage, Projekttage. Diese Tage überspringt die Vorschau." }));
   const liste = el("div", { class: "frei-liste" });
   einst.freieTage.forEach((f, i) => {
@@ -548,6 +613,38 @@ function renderEinstellungenVorschau(box, kurse) {
   } }, "Hinzufügen");
   liste.append(el("div", { class: "zeile-eingabe" }, el("label", { class: "feld" }, "von", von), el("label", { class: "feld" }, "bis", bis), hinzu));
   box.append(liste);
+}
+
+function seiteFaecher(box) {
+  const { bestand } = zustand;
+  seitenKopf(box, "Vorschau", () => seiteOeffnen(["vorschau"]), "Fächer im Stundenplan");
+  const faecher = faecherImStundenplan(bestand);
+  if (!faecher.length) {
+    box.append(el("p", { text: "Noch kein Stundenplan abgerufen. Das Lesezeichen holt ihn beim nächsten Abruf mit." }));
+    return;
+  }
+  box.append(el("p", { text: "Jedes Fach aus dem Stundenplan gehört zu einem Kurs im Archiv. „Nicht anzeigen“ blendet es in der Vorschau aus." }));
+  const tabelle = el("div", { class: "kurs-tabelle" });
+  for (const fach of faecher) {
+    const zu = bestand.kurszuordnung[fach];
+    const hinweis = !zu ? "noch nicht zugeordnet" : zu.quelle === "auto" && !zu.bestaetigt ? "automatisch zugeordnet" : null;
+    tabelle.append(el("div", { class: "kurs-zeile zwei" },
+      el("div", { class: "roh" }, fach, hinweis ? el("small", { text: hinweis }) : null),
+      el("label", {}, "Kurs im Archiv", zuordnungAuswahl(fach, renderEinstellungen)),
+    ));
+  }
+  box.append(tabelle);
+}
+
+function seiteDaten(box) {
+  seitenKopf(box, "Einstellungen", () => seiteOeffnen([]), "Daten");
+  box.append(gruppe(
+    zeile("Exportieren", "Alles als JSON-Datei in die Downloads", exportieren, { pfeil: false }),
+    zeile("Importieren", "Datei vom Lesezeichen oder frühere Export-Datei", () => dateiQuelle.oeffnen(), { pfeil: false }),
+  ));
+  box.append(el("p", { text: "Der Browser-Speicher ist flüchtig. Regelmäßig exportieren, die Datei lässt sich hier jederzeit wieder importieren." }));
+  box.append(gruppe(zeile("Lesezeichen", "Anleitung und Installation", "./install.html")));
+  box.append(el("p", { text: "Das Lesezeichen holt die Daten aus dem eingeloggten Schulmanager-Tab." }));
 }
 
 function overrideSetzen(tag, kurs, wert) {
@@ -586,6 +683,7 @@ function archivLoeschen() {
   zustand.vorschauDatum = null;
   zustand.ansicht = "archiv";
   zustand.vorher = "archiv";
+  zustand.seite = [];
   melden("ok", "Archiv gelöscht.");
   render();
 }
@@ -598,7 +696,6 @@ const dateiQuelle = new DateiQuelle($("datei"));
 const empfangsQuelle = new EmpfangsQuelle(window);
 
 function verdrahten() {
-  $("knopf-import").addEventListener("click", () => dateiQuelle.oeffnen());
   $("knopf-einstellungen").addEventListener("click", () => {
     ansichtWechseln(zustand.ansicht === "einstellungen" ? zustand.vorher : "einstellungen");
   });
@@ -610,6 +707,10 @@ function verdrahten() {
     zustand.filter.nurHausaufgabe = !zustand.filter.nurHausaufgabe;
     renderWerkzeuge(); renderListe();
   });
+  $("seit-klausur").addEventListener("click", () => {
+    zustand.filter.seitKlausur = !zustand.filter.seitKlausur;
+    renderKlausur(); renderListe();
+  });
   $("reset").addEventListener("click", () => {
     zustand.filter = FILTER_LEER();
     render();
@@ -620,7 +721,7 @@ function verdrahten() {
     onFehler: (text) => melden("fehler", text),
     onWarten: (laeuft) => melden(laeuft ? "ok" : "warn", laeuft
       ? "Warte auf die Daten aus dem Schulmanager-Tab …"
-      : "In 20 Sekunden ist nichts angekommen. Im Schulmanager-Tab steht oben rechts, was passiert ist. Falls dort eine Datei heruntergeladen wurde: hier auf „Importieren“ tippen."),
+      : "In 20 Sekunden ist nichts angekommen. Im Schulmanager-Tab steht oben rechts, was passiert ist. Falls dort eine Datei heruntergeladen wurde: Einstellungen → Daten → Importieren."),
   };
   for (const quelle of [dateiQuelle, empfangsQuelle]) {
     if (quelle.verfuegbar()) quelle.starten(callbacks);

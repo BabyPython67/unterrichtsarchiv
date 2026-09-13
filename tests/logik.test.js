@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import {
   tagesplan, ermittleWochenplan, naechsterSchultag, schultagSuchen, letzteStunde, baueDigest,
   digestKopfzeile, digestText, stundenplanUebernehmen, leererStundenplan, planFunktion, kurszuordnungErgaenzen,
-  istFrei, istWochenende, datumPlus, tageZwischen, wochentagKuerzel, syncStatus, herkunftZeile, mitStandard,
+  istFrei, istWochenende, datumPlus, tageZwischen, wochentagKuerzel, syncStatus, syncZeile, herkunftZeile, mitStandard,
 } from "../kern/logik.js";
 import { leererBestand, pruefeBestand, exportText } from "../kern/speicher.js";
 import { importieren } from "../kern/importieren.js";
@@ -347,6 +347,24 @@ test("herkunftZeile und syncStatus liefern Klartext mit Alter", () => {
   const f = syncStatus({ letzterErfolg: "2026-09-14T06:00:00.000Z", letzterFehler: { zeit: "2026-09-15T06:00:00.000Z", art: "auth", text: "Anmeldung abgelaufen" } }, jetzt, {});
   assert.deepEqual(f, { art: "fehler", text: "Letzter Abruf fehlgeschlagen: Anmeldung abgelaufen" });
   assert.equal(mitStandard(undefined).schulbeginn, "08:00");
+});
+
+test("syncZeile: keine zweite Zeile, wenn die Herkunft denselben Abruf nennt; Fehler immer", () => {
+  const jetzt = new Date(2026, 8, 15, 20, 0);
+  const daten = digestDaten();
+  daten.stundenplan = stundenplanFixture();
+  daten.kurszuordnung = zuordnung;
+  const gemessen = baueDigest(jetzt, daten);
+  const abgeleitet = baueDigest(jetzt, digestDaten());
+  const am = daten.stundenplan.abgerufenAm;
+
+  assert.equal(syncZeile(gemessen, daten.stundenplan, { letzterErfolg: am }, jetzt, {}), null);
+  assert.deepEqual(syncZeile(abgeleitet, leererStundenplan(), { letzterErfolg: am }, jetzt, {}), { art: "ok", text: "Letzter Abruf vor 2 Tagen" });
+  // Später erfolgreich abgerufen, aber der Stundenplan-Teil kam nicht mit: beide Zeilen haben eigene Aussagen.
+  assert.deepEqual(syncZeile(gemessen, daten.stundenplan, { letzterErfolg: "2026-09-15T06:00:00.000Z" }, jetzt, {}), { art: "ok", text: "Letzter Abruf heute" });
+  const fehler = { letzterErfolg: am, letzterFehler: { zeit: "2026-09-15T06:00:00.000Z", text: "Anmeldung abgelaufen" } };
+  assert.equal(syncZeile(gemessen, daten.stundenplan, fehler, jetzt, {}).art, "fehler");
+  assert.deepEqual(syncZeile(abgeleitet, leererStundenplan(), null, jetzt, {}), { art: "nie", text: "Noch kein Abruf" });
 });
 
 // ---------------------------------------------------------------------------

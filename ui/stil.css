@@ -43,6 +43,9 @@
 
 html { -webkit-text-size-adjust: 100%; }
 
+/* hidden muss gegen display:flex der Klassen gewinnen */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--papier);
@@ -76,11 +79,6 @@ button[aria-pressed="true"] {
 button.gefahr {
   color: var(--gefahr);
   border-color: var(--gefahr);
-}
-
-button.gross {
-  font-weight: 600;
-  padding: 12px 18px;
 }
 
 button:focus-visible, input:focus-visible, a:focus-visible {
@@ -147,22 +145,15 @@ a { color: var(--akzent); }
 .meldung .text ul { margin: 6px 0 0; padding-left: 18px; }
 .meldung button { min-height: 32px; padding: 4px 10px; background: transparent; border-color: currentColor; color: inherit; }
 
-/* Klausur-Karte */
+/* Seit letzter Klausur: Zeile unter den Werkzeugen, nur wenn der Schalter an ist */
 .klausur {
-  margin: 12px 16px 0;
-  padding: 14px;
-  background: var(--karte);
-  border: 1px solid var(--linie);
-  border-radius: var(--radius);
-}
-
-.klausur.aktiv { border-color: var(--akzent); background: var(--akzent-weich); }
-
-.klausur-zeile {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 14px;
+  gap: 8px 14px;
+  padding: 10px 16px;
+  background: var(--akzent-weich);
+  border-bottom: 1px solid var(--linie);
 }
 
 .klausur .info {
@@ -298,8 +289,72 @@ mark {
 }
 
 .einstellungen h2 { font-size: 20px; margin: 16px 0 8px; }
-.einstellungen h3 { font-size: 15px; color: var(--leise); margin: 22px 0 8px; text-transform: uppercase; letter-spacing: .04em; }
 .einstellungen p { color: var(--leise); font-size: 14px; margin: 0 0 10px; }
+
+/* Kopf jeder Einstellungsseite: Zurück zur Seite darüber, darunter der Titel */
+.seitenkopf { margin: 4px 0 12px; }
+
+.seitenkopf .zurueck {
+  min-height: 36px;
+  margin-left: -8px;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--akzent);
+  font-size: 15px;
+}
+
+.seitenkopf .zurueck:hover { text-decoration: underline; }
+.einstellungen .seitenkopf h2 { margin: 2px 0 0; overflow-wrap: anywhere; }
+.seitenkopf h2:focus { outline: none; }
+
+/* Gruppe aus Zeilen: Titel, darunter leise der Stand, rechts Pfeil oder Bedienelement */
+.einst-gruppe {
+  margin: 12px 0 10px;
+  background: var(--karte);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.einst-zeile {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--tinte);
+  text-align: left;
+  text-decoration: none;
+}
+
+.einst-zeile + .einst-zeile { border-top: 1px solid var(--linie); }
+button.einst-zeile:hover, a.einst-zeile:hover { background: var(--papier); }
+.einst-zeile:focus-visible { outline-offset: -2px; }
+.einst-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.einst-titel { font-weight: 550; overflow-wrap: anywhere; }
+.einst-wert { color: var(--leise); font-size: 14px; overflow-wrap: anywhere; }
+.einst-pfeil { color: var(--leise); font-size: 22px; line-height: 1; }
+.einst-rechts { flex: 0 0 auto; }
+.einst-zeile.gefahr .einst-titel { color: var(--gefahr); }
+
+.segment {
+  display: inline-flex;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.segment button { min-height: 36px; padding: 4px 12px; border: 0; border-radius: 0; font-size: 14px; }
+.segment button + button { border-left: 1px solid var(--linie); }
+
+.einst-feld { display: grid; gap: 4px; max-width: 420px; margin: 14px 0 6px; font-size: 14px; color: var(--leise); }
+.einst-feld input { color: var(--tinte); }
 
 .kurs-tabelle {
   display: grid;
@@ -321,8 +376,7 @@ mark {
 .kurs-zeile label { display: grid; gap: 4px; font-size: 13px; color: var(--leise); }
 
 @media (min-width: 640px) {
-  .kurs-zeile { grid-template-columns: 1.4fr 1fr 1fr; align-items: end; gap: 12px; }
-  .kurs-zeile.zwei { grid-template-columns: 1.4fr 2fr; }
+  .kurs-zeile.zwei { grid-template-columns: 1.4fr 2fr; align-items: end; gap: 12px; }
 }
 
 .knopfreihe { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
@@ -415,6 +469,9 @@ input[type="time"] {
   font-size: 13px;
   text-align: center;
 }
+
+.herkunft + .herkunft { margin-top: 2px; }
+.herkunft.alt { color: var(--warn-fg); }
 
 .hinweis {
   margin: 12px 0 0;
