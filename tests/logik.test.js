@@ -7,7 +7,7 @@ import {
   tagesplan, ermittleWochenplan, naechsterSchultag, schultagSuchen, letzteStunde, baueDigest,
   digestKopfzeile, tagesablauf, digestText, stundenplanUebernehmen, leererStundenplan, planFunktion, kurszuordnungErgaenzen,
   istFrei, istWochenende, datumPlus, tageZwischen, wochentagKuerzel, syncStatus, syncZeile, herkunftZeile, mitStandard,
-  abrufStand, stundenSeitAbruf, stundenSeitAbrufText, lueckeText,
+  abrufStand, stundenSeitAbruf, stundenSeitAbrufText, lueckeText, eintragDatum, kurseZumEintragen, kurseOhneHausaufgabe,
 } from "../kern/logik.js";
 import { leererBestand, pruefeBestand, exportText } from "../kern/speicher.js";
 import { importieren } from "../kern/importieren.js";
@@ -564,4 +564,65 @@ test("planFunktion bündelt Wochenplan und Stundenplan für die Pfeilnavigation"
   const plan = planFunktion(daten, "2026-09-14");
   assert.deepEqual(plan("2026-09-15").kurse.map((k) => k.kurs), ["Englisch", "Geschichte", "Mathematik"]);
   assert.equal(schultagSuchen("2026-09-16", 1, plan, daten.einstellungen.freieTage), "2026-09-22");
+});
+
+// ---------------------------------------------------------------------------
+// Selbst eingetragene Hausaufgaben (position ab 1001)
+// ---------------------------------------------------------------------------
+
+test("baueDigest: eigener Eintrag zählt als Eintrag und schließt die Lücke; selbst alle, teils, null", () => {
+  const b = lueckeDaten();
+  b.eintraege.push(e("Englisch", "2026-09-15", "", "Vokabeln Unit 4", 1001), e("Mathematik", "2026-09-14", "", "S. 45 Nr. 3", 1001));
+  const d = baueDigest(new Date(2026, 8, 15, 18, 0), b);   // Di 18:00 -> Mi 16.09.
+  const k = Object.fromEntries(d.kurse.map((x) => [x.kurs, x]));
+  assert.equal(k.Englisch.luecke, null);
+  assert.equal(d.luecke, null);
+  assert.deepEqual([k.Englisch.selbst, k.Englisch.hausaufgabe, k.Englisch.thema], ["alle", "Vokabeln Unit 4", ""]);
+  assert.deepEqual([k.Mathematik.selbst, k.Mathematik.thema, k.Mathematik.hausaufgabe], ["teils", "Ableitung", "S. 45 Nr. 3"]);
+  assert.equal(k.Deutsch.selbst, null);
+});
+
+test("eintragDatum: letzter Tag mit begonnenem Unterricht, Wochenende und freie Tage übersprungen", () => {
+  assert.equal(eintragDatum(new Date(2026, 8, 15, 10, 0), {}), "2026-09-15");
+  assert.equal(eintragDatum(new Date(2026, 8, 15, 7, 0), {}), "2026-09-14", "vor Schulbeginn -> Vortag");
+  assert.equal(eintragDatum(new Date(2026, 8, 14, 7, 0), {}), "2026-09-11", "Mo früh -> Fr");
+  assert.equal(eintragDatum(new Date(2026, 8, 12, 12, 0), {}), "2026-09-11", "Sa -> Fr");
+  assert.equal(eintragDatum(new Date(2026, 8, 15, 10, 0), { freieTage: ["2026-09-14..2026-09-15"] }), "2026-09-11");
+});
+
+test("kurseZumEintragen: Kurse des Tages in Tagesreihenfolge, dann alle weiteren; Fach ohne Zuordnung wählbar", () => {
+  const b = lueckeDaten();
+  b.stundenplan.tage["2026-09-16"].push({ stunde: 5, fach: "KU", status: "normal" });
+  b.kurszuordnung.PH = { kurs: "Physik", quelle: "manuell", bestaetigt: true };
+  b.eintraege.push(e("Chemie", "2026-09-10"));
+  b.kursAlias = { Englisch: "Anglistik" };
+  const mi = kurseZumEintragen(b, "2026-09-16", "2026-09-15");
+  assert.deepEqual(mi.amTag, [
+    { kurs: "Mathematik", name: "Mathematik", fach: null },
+    { kurs: "Englisch", name: "Anglistik", fach: null },
+    { kurs: "Deutsch", name: "Deutsch", fach: null },
+    { kurs: "KU", name: "KU", fach: "KU" },
+  ]);
+  assert.deepEqual(mi.weitere.map((k) => k.kurs), ["Chemie", "Physik"]);
+  const di = kurseZumEintragen(b, "2026-09-15", "2026-09-15");
+  assert.deepEqual(di.amTag.map((k) => k.kurs), ["Englisch"], "Entfall und „Nicht anzeigen“ fehlen");
+  assert.deepEqual(di.weitere.map((k) => [k.kurs, k.fach]), [["Chemie", null], ["Deutsch", null], ["KU", "KU"], ["Mathematik", null], ["Physik", null]]);
+  assert.deepEqual(kurseZumEintragen(b, "2026-09-12", "2026-09-15").amTag, [], "Samstag");
+  b.einstellungen.freieTage = ["2026-09-16"];
+  assert.deepEqual(kurseZumEintragen(b, "2026-09-16", "2026-09-15").amTag, [], "freier Tag");
+});
+
+test("kurseOhneHausaufgabe: gehaltene Kurse eines gemessenen Tages ohne Hausaufgabe; abgerufen, wenn der Abruf danach lag", () => {
+  const b = lueckeDaten();   // Abruf Mo 14.09. 18:00
+  assert.deepEqual(kurseOhneHausaufgabe(new Date(2026, 8, 14, 20, 0), b, "2026-09-14"), {
+    datum: "2026-09-14", abgerufen: true,
+    kurse: [{ kurs: "Mathematik", name: "Mathematik", fach: null }, { kurs: "Englisch", name: "Englisch", fach: null }],
+  });
+  b.eintraege.push(e("Mathematik", "2026-09-14", "Ableitung", "S. 12", 2), e("Englisch", "2026-09-14", "", "Vokabeln", 1001));
+  assert.deepEqual(kurseOhneHausaufgabe(new Date(2026, 8, 14, 20, 0), b, "2026-09-14").kurse, [], "Hausaufgabe der Lehrkraft oder selbst eingetragen zählt");
+  const di = kurseOhneHausaufgabe(new Date(2026, 8, 15, 10, 0), b, "2026-09-15");
+  assert.deepEqual([di.abgerufen, di.kurse.map((k) => k.kurs)], [false, ["Englisch"]]);
+  assert.equal(kurseOhneHausaufgabe(new Date(2026, 8, 15, 7, 0), b, "2026-09-15"), null, "vor Schulbeginn");
+  assert.equal(kurseOhneHausaufgabe(new Date(2026, 8, 15, 10, 0), b, "2026-09-16"), null, "kommt erst");
+  assert.equal(kurseOhneHausaufgabe(new Date(2026, 8, 15, 10, 0), b, "2026-09-11"), null, "vor dem Stundenplan-Fenster");
 });

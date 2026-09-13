@@ -135,3 +135,13 @@ test("wochentag, datumLesbar, monatsName", () => {
   assert.equal(datumLesbar(null), "");
   assert.equal(monatsName("2026-03"), "März 2026");
 });
+
+test("filtern und gruppieren: selbst eingetragener Eintrag ohne Thema, unter dem der Lehrkraft", () => {
+  const eigen = { id: "Chemie|2026-09-14|1001", kurs: "Chemie", datum: "2026-09-14", thema: "", hausaufgabe: "Zitronenbatterie bauen", position: 1001, ersterfasst: "2026-09-14", geaendert: null };
+  const liste = [...alle, eigen];
+  assert.deepEqual(filtern(liste, { suche: "zitronenbatterie" }), [eigen]);
+  assert.ok(filtern(liste, { nurHausaufgabe: true }).includes(eigen));
+  const lehrkraft = { ...eigen, id: "Chemie|2026-09-14|1", thema: "Redox", hausaufgabe: "", position: 1 };
+  const [g] = gruppieren([eigen, lehrkraft]);
+  assert.deepEqual(g.monate[0].eintraege.map((e) => e.position), [1, 1001]);
+});

@@ -4,7 +4,8 @@
 //
 // Datumsformat überall "YYYY-MM-DD" in Ortszeit. Wochentage als Kürzel "Mo" … "So".
 
-import { WOCHENTAGE, anzeigename, wochentag as wochentagLesbar } from "./filtern.js";
+import { WOCHENTAGE, anzeigename, kurseSortiert, wochentag as wochentagLesbar } from "./filtern.js";
+import { istEigen } from "./mergen.js";
 
 export const EINSTELLUNGEN_STANDARD = Object.freeze({
   wochenplan: { fensterTage: 56, overrides: {} },
@@ -325,10 +326,13 @@ export function tagLabel(datum, heute) {
  * daten: { eintraege, kursAlias, stundenplan, kurszuordnung, einstellungen, datum? }
  * datum erzwingt einen Tag (Pfeilnavigation); sonst naechsterSchultag.
  * → { datum, label, wochentag, herkunft, angepasst, kurse: [{ kurs, name, fach, thema, hausaufgabe,
- *      letztesDatum, vorTagen, alt, sicherheit, status, stunden, zuordnungFehlt, luecke }],
+ *      letztesDatum, vorTagen, alt, sicherheit, status, stunden, zuordnungFehlt, luecke, selbst }],
  *    entfallen: [{ kurs, fach, stunden, name }], anzahlHA, luecke }
  * kurse[].luecke: { datum, nachAbruf } oder null. Die letzte gehaltene Stunde des Kurses laut
  * Stundenplan (datum) hat keinen Eintrag im Archiv; nachAbruf: sie lag nach dem letzten Abruf.
+ * Ein selbst eingetragener Eintrag zählt wie jeder andere, schließt also auch die Lücke.
+ * kurse[].selbst: "alle", wenn die Einträge der letzten Stunde alle selbst eingetragen sind,
+ * "teils" bei gemischten, sonst null.
  * luecke (Digest): { abrufTag }, wenn mindestens ein Kurs eine Lücke nach dem Abruf hat, sonst null.
  * Reihenfolge: gemessen wie im Stundenplan (erste Stunde oben); sonst Kurse mit Hausaufgabe
  * zuerst (stabil). Mitteilung und Viewer zeigen dieselbe Reihenfolge.
@@ -357,6 +361,7 @@ export function baueDigest(jetzt, daten) {
     const vorTagen = letzte ? tageZwischen(letzte.datum, heute) : null;
     const gehalten = k.kurs ? zuletztGehalten.get(k.kurs) : undefined;
     const luecke = gehalten && (!letzte || letzte.datum < gehalten) ? { datum: gehalten, nachAbruf: nachAbruf(gehalten, abruf) } : null;
+    const eigene = letzte ? letzte.eintraege.filter(istEigen).length : 0;
     return {
       kurs: k.kurs,
       name: k.kurs ? anzeigename(k.kurs, daten.kursAlias || {}) : k.fach,
@@ -371,6 +376,7 @@ export function baueDigest(jetzt, daten) {
       thema,
       hausaufgabe,
       luecke,
+      selbst: !eigene ? null : eigene === letzte.eintraege.length ? "alle" : "teils",
     };
   });
   // Gemessen: Reihenfolge des Stundenplans, erste Stunde oben. Sonst gibt es keine echte
@@ -490,6 +496,78 @@ export function kurszuordnungErgaenzen(kurszuordnung, stundenplan, eintraege) {
     }
   }
   return zu;
+}
+
+// ---------------------------------------------------------------------------
+// Eintragen: Datum, Kursauswahl und Vorschläge für selbst eingetragene Hausaufgaben
+// ---------------------------------------------------------------------------
+
+/**
+ * Vorgeschlagenes Datum für „Aufgegeben am“: der letzte Tag, dessen Unterricht schon begonnen hat
+ * (heute ab Schulbeginn), ohne Wochenende und freie Tage. Morgens vor Schulbeginn und am
+ * Wochenende also der Schultag davor.
+ */
+export function eintragDatum(jetzt, einstellungen) {
+  const einst = mitStandard(einstellungen);
+  let d = gehaltenBis(jetzt, einst.schulbeginn);
+  for (let i = 0; i < SCHULTAGE_VORAUS && (istWochenende(d) || istFrei(d, einst.freieTage)); i++) d = datumPlus(d, -1);
+  return d;
+}
+
+/**
+ * Kurse für das Auswahlfeld beim Eintragen.
+ * amTag: Kurse des Tages in Tagesreihenfolge, ohne Entfall und „Nicht anzeigen“, leer an freien Tagen.
+ * weitere: alle übrigen Kurse aus Archiv, Kurszuordnung und Stundenplan, nach Anzeigename.
+ * Ein Fach ohne Zuordnung steht mit kurs = fach und gesetztem fach. Wer es wählt, ordnet das Fach
+ * damit dem gleichnamigen Kurs zu; so lässt sich auch ein Kurs ohne jeden Eintrag wählen.
+ * → { amTag: [{ kurs, name, fach }], weitere: [{ kurs, name, fach }] }
+ */
+export function kurseZumEintragen(daten, datum, heute) {
+  const einst = mitStandard(daten.einstellungen);
+  const alias = daten.kursAlias || {};
+  const zuordnung = daten.kurszuordnung || {};
+  const offen = new Set();   // Fächer im Stundenplan ohne Zuordnung
+  for (const s of Object.values((daten.stundenplan && daten.stundenplan.tage) || {}).flat()) {
+    if (s && typeof s.fach === "string" && s.fach && !Object.prototype.hasOwnProperty.call(zuordnung, s.fach)) offen.add(s.fach);
+  }
+  const eintrag = (kurs) => ({ kurs, name: anzeigename(kurs, alias), fach: offen.has(kurs) ? kurs : null });
+
+  const amTag = [];
+  if (datum && !istFrei(datum, einst.freieTage)) {
+    for (const k of planFunktion(daten, heute)(datum).kurse) {
+      const kurs = k.kurs || k.fach;
+      if (kurs && !amTag.some((x) => x.kurs === kurs)) amTag.push(eintrag(kurs));
+    }
+  }
+  const alle = new Set([
+    ...(daten.eintraege || []).map((e) => e.kurs),
+    ...Object.values(zuordnung).map((z) => z && z.kurs).filter((k) => typeof k === "string" && k),
+    ...offen,
+  ]);
+  const weitere = kurseSortiert([...alle].filter((k) => !amTag.some((x) => x.kurs === k)), alias).map(eintrag);
+  return { amTag, weitere };
+}
+
+/**
+ * Vorschläge beim Eintragen: Kurse, die am Tag laut Stundenplan stattfanden, aber im Archiv keine
+ * Hausaufgabe haben, weder von der Lehrkraft noch selbst eingetragen. Nur gemessene Tage, deren
+ * Unterricht schon begonnen hat, sonst null. abgerufen: Der letzte Abruf lag nach Beginn dieses
+ * Tages, keine Hausaufgabe heißt dann „im Schulmanager nichts eingetragen“. Ohne Uhrzeiten der
+ * Stunden zählt wie bei den Lücken der ganze Tag ab Schulbeginn.
+ * → { datum, abgerufen, kurse: [{ kurs, name, fach }] } oder null
+ */
+export function kurseOhneHausaufgabe(jetzt, daten, datum) {
+  const einst = mitStandard(daten.einstellungen);
+  const heute = isoDatum(jetzt);
+  if (!datum || datum > gehaltenBis(jetzt, einst.schulbeginn) || istFrei(datum, einst.freieTage)) return null;
+  if (planFunktion(daten, heute)(datum).herkunft !== "gemessen") return null;
+  const mitHausaufgabe = new Set((daten.eintraege || []).filter((e) => e.datum === datum && e.hausaufgabe).map((e) => e.kurs));
+  const abruf = abrufStand(daten, einst.schulbeginn);
+  return {
+    datum,
+    abgerufen: !!abruf && !nachAbruf(datum, abruf),
+    kurse: kurseZumEintragen(daten, datum, heute).amTag.filter((k) => !mitHausaufgabe.has(k.kurs)),
+  };
 }
 
 // ---------------------------------------------------------------------------

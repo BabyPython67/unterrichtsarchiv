@@ -16,6 +16,9 @@ Eigenständiges Projekt, nicht verwandt mit anderen Repos im Workspace.
   im Stundenplan-Cache dient nur der Reihenfolge.
 - Zwei Datenarten, zwei Regeln: `eintraege` ist das Archiv und schrumpft nie. `stundenplan`
   ist ein Cache, ein neuer Abruf ersetzt die Tage im Fenster vollständig. Nie vermischen.
+- Einzige Ausnahme vom Schrumpfen: selbst eingetragene Einträge (`position` ab 1001, siehe
+  `kern/mergen.js`). Nur sie lassen sich in der App ändern und löschen, Einträge aus dem
+  Schulmanager nie.
 - Digest-Logik nur in `kern/logik.js` (`baueDigest`). Viewer und spätere Kurzbefehle nutzen
   dieselbe Funktion, keine zweite Implementierung.
 

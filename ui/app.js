@@ -4,12 +4,13 @@
 
 import { lesen, schreiben, loeschen, defektSichern, exportText, exportDateiname, leererBestand } from "../kern/speicher.js";
 import { importieren } from "../kern/importieren.js";
+import { istEigen, eigenenEintragAnlegen, eigenenEintragAendern, eigenenEintragLoeschen, eigeneEintraege } from "../kern/mergen.js";
 import {
   filtern, gruppieren, kursListe, trefferZeile, eingegrenzt, anzahlText, kurseZaehlen, kurseSortiert, anzeigename, zerlegen, wochentag, datumLesbar, WOCHENTAGE,
 } from "../kern/filtern.js";
 import {
   baueDigest, digestKopfzeile, tagesablauf, herkunftZeile, syncZeile, planFunktion, schultagSuchen, datumPlus, isoDatum, vorTagenText,
-  ermittleWochenplan, mitStandard, lueckeText, stundenSeitAbruf, stundenSeitAbrufText,
+  ermittleWochenplan, mitStandard, lueckeText, stundenSeitAbruf, stundenSeitAbrufText, eintragDatum, kurseZumEintragen, kurseOhneHausaufgabe,
 } from "../kern/logik.js";
 import {
   kurseZusammenfassung, vorschauZusammenfassung, wochenplanZusammenfassung, freieTageZusammenfassung,
@@ -50,6 +51,8 @@ try { storage = window.localStorage; } catch { storage = null; }
 // zeitraum ("alles" | "klausur" | "ab") ist nur Zustand der Oberfläche; filtern() liest seitKlausur und abDatum.
 // kurs ist die geöffnete Kursseite im Archiv, null die Kursliste.
 const FILTER_LEER = () => ({ kurs: null, abDatum: "", suche: "", nurHausaufgabe: false, seitKlausur: false, zeitraum: "alles" });
+// datum "" heißt: vorgeschlagenes Datum (eintragDatum), erst eine Wahl im Feld legt es fest.
+const ENTWURF_LEER = () => ({ kurs: "", hausaufgabe: "", datum: "" });
 
 const zustand = {
   bestand: leererBestand(),
@@ -57,11 +60,13 @@ const zustand = {
   filter: FILTER_LEER(),
   filterOffen: false,     // Filterbereich im Archiv aufgeklappt
   monatAuf: {},           // "kurs|JJJJ-MM" → per Antippen auf- oder zugeklappt, sonst ist nur der neueste Monat offen
-  ansicht: "archiv",     // "archiv" | "vorschau" | "einstellungen"
+  ansicht: "archiv",     // "archiv" | "vorschau" | "eintragen" | "einstellungen"
   vorher: "archiv",       // wohin „Zurück“ aus den Einstellungen führt
   seite: [],              // Unterseite der Einstellungen, siehe renderEinstellungen
   vorschauDatum: null,    // null = nächster Schultag automatisch, sonst per Pfeil gewählter Tag
   abrufHilfeOffen: false, // Kurzanleitung zum Lesezeichen im Hinweis der Vorschau aufgeklappt
+  entwurf: ENTWURF_LEER(), // Eingaben unter „Eintragen“, bleiben beim Reiterwechsel erhalten
+  bearbeiten: null,       // { id, zurueck, scroll }: ein selbst eingetragener Eintrag wird geändert
   meldung: null,
 };
 
@@ -124,20 +129,26 @@ function render() {
   $("knopf-einstellungen").setAttribute("aria-pressed", String(a === "einstellungen"));
   $("reiter-archiv").setAttribute("aria-pressed", String(a === "archiv"));
   $("reiter-vorschau").setAttribute("aria-pressed", String(a === "vorschau"));
+  $("reiter-eintragen").setAttribute("aria-pressed", String(a === "eintragen"));
   $("stand").hidden = a !== "archiv";
   $("liste-bereich").hidden = a !== "archiv";
   $("vorschau").hidden = a !== "vorschau";
+  $("eintragen").hidden = a !== "eintragen";
   $("einstellungen").hidden = a !== "einstellungen";
   if (a === "einstellungen") {
     renderEinstellungen();
   } else if (a === "vorschau") {
     renderVorschau();
+  } else if (a === "eintragen") {
+    renderEintragen();
   } else {
     renderArchivKopf();
     renderFilter();
     renderListe();
   }
 }
+
+const ANSICHT_NAMEN = { archiv: "Archiv", vorschau: "Vorschau", eintragen: "Eintragen" };
 
 /** seite gilt nur beim Wechsel in die Einstellungen: [] ist die Übersicht. */
 function ansichtWechseln(ziel, seite = []) {
@@ -515,10 +526,17 @@ function kursAbschnitt(g, { titel, zuklappen }) {
 }
 
 function eintragZeile(e, suche) {
+  const eigen = istEigen(e);
   const inhalt = el("div", { class: "inhalt" });
   if (e.thema) inhalt.append(el("div", { class: "thema" }, hervorheben(e.thema, suche)));
-  else inhalt.append(el("div", { class: "thema leer", text: "Kein Inhalt eingetragen" }));
+  else if (!eigen) inhalt.append(el("div", { class: "thema leer", text: "Kein Inhalt eingetragen" }));
   if (e.hausaufgabe) inhalt.append(el("div", { class: "ha" }, el("b", { text: "Hausaufgabe: " }), hervorheben(e.hausaufgabe, suche)));
+  if (eigen) {
+    inhalt.append(el("div", { class: "eigen" }, "Selbst eingetragen · ", el("button", {
+      type: "button", class: "textknopf", "aria-label": `Selbst eingetragene Hausaufgabe vom ${wochentag(e.datum)} ändern`,
+      onclick: () => bearbeitenOeffnen(e.id, "archiv"),
+    }, "Ändern")));
+  }
   return el("div", { class: "eintrag" }, el("div", { class: "wann", text: wochentag(e.datum) }), inhalt);
 }
 
@@ -602,10 +620,11 @@ function kursKarte(k) {
   const karte = el("article", { class: "karte" }, kopf);
   if (k.hausaufgabe) karte.append(el("div", { class: "karte-ha" }, el("b", { text: "Hausaufgabe: " }), k.hausaufgabe));
   if (k.thema) karte.append(el("p", { class: "karte-thema", text: k.thema }));
-  else if (k.letztesDatum) karte.append(el("p", { class: "karte-thema leer", text: "Kein Inhalt eingetragen" }));
+  else if (k.letztesDatum && k.selbst !== "alle") karte.append(el("p", { class: "karte-thema leer", text: "Kein Inhalt eingetragen" }));
   if (k.letztesDatum) {
     karte.append(el("p", { class: "karte-meta" }, `Zuletzt ${wochentag(k.letztesDatum)} · `,
-      el("span", { class: k.alt ? "alt" : null, text: vorTagenText(k.vorTagen) })));
+      el("span", { class: k.alt ? "alt" : null, text: vorTagenText(k.vorTagen) }),
+      k.selbst ? ` · ${k.selbst === "alle" ? "selbst eingetragen" : "teils selbst eingetragen"}` : null));
   } else {
     karte.append(el("p", { class: "karte-meta", text: "Noch kein Eintrag im Archiv" }));
   }
@@ -650,6 +669,181 @@ function zuordnungKarte(k) {
     el("div", { class: "karte-kopf" }, el("h3", { text: k.name }), el("span", { class: "marke leise", text: "nicht zugeordnet" })),
     el("div", { class: "zeile-eingabe" }, zuordnungAuswahl(k.fach, renderVorschau)),
   );
+}
+
+// ---- Eintragen -------------------------------------------------------------
+//
+// Hausaufgaben, die nicht im Schulmanager stehen, selbst notieren. Eigene Einträge sind normale
+// Einträge (kern/mergen.js) und stehen danach in Archiv und Vorschau. Oben stehen die Kurse des
+// Tages ohne Hausaufgabe als Vorschläge, darunter das Formular, am Ende die zuletzt selbst
+// eingetragenen. Mit zustand.bearbeiten ändert dieselbe Seite einen eigenen Eintrag.
+
+function renderEintragen() {
+  const box = $("eintragen");
+  box.textContent = "";
+  const { bestand } = zustand;
+  const b = zustand.bearbeiten;
+  const alt = b ? bestand.eintraege.find((e) => e.id === b.id && istEigen(e)) : null;
+  if (b && !alt) zustand.bearbeiten = null;
+
+  if (!alt && !bestand.eintraege.length && !Object.keys(bestand.stundenplan.tage).length) {
+    box.append(leerHinweis());
+    return;
+  }
+
+  // Beim Ändern gelten die Werte nur auf dieser Seite, beim Neuanlegen landen sie im Entwurf.
+  const werte = alt
+    ? { kurs: alt.kurs, hausaufgabe: alt.hausaufgabe, datum: alt.datum }
+    : { ...zustand.entwurf, datum: zustand.entwurf.datum || eintragDatum(new Date(), bestand.einstellungen) };
+  const merken = (feld, wert) => {
+    werte[feld] = wert;
+    if (!alt) zustand.entwurf[feld] = wert;
+  };
+  const tagText = (datum) => (datum === heuteIso() ? "Heute" : `Am ${wochentag(datum)}`);
+
+  if (alt) {
+    seitenKopf(box, b.zurueck === "archiv" ? "Archiv" : "Eintragen", bearbeitenBeenden, "Eintrag ändern");
+  } else {
+    box.append(el("h2", { class: "eintragen-titel", text: "Hausaufgabe eintragen" }),
+      el("p", { class: "info", text: "Für Hausaufgaben, die nicht im Schulmanager stehen." }));
+  }
+
+  const vorschlaege = el("div", { class: "vorschlaege" });
+  const auswahl = el("select", { id: "eintrag-kurs", "aria-describedby": "eintrag-kurs-fehlt" });
+  const text = el("textarea", { id: "eintrag-ha", rows: "3", autocapitalize: "sentences", "aria-describedby": "eintrag-ha-fehlt" });
+  const datum = el("input", { type: "date", id: "eintrag-datum", value: werte.datum });
+  const kursFehlt = el("p", { class: "fehlt", id: "eintrag-kurs-fehlt", text: "Kurs wählen.", hidden: true });
+  const textFehlt = el("p", { class: "fehlt", id: "eintrag-ha-fehlt", text: "Hausaufgabe eingeben.", hidden: true });
+  let ohneZuordnung = new Map();   // Kurs → gleichnamiges Fach im Stundenplan, das noch keinem Kurs zugeordnet ist
+
+  function kursSetzen(kurs) {
+    auswahl.value = kurs;
+    merken("kurs", auswahl.value);
+    if (auswahl.value) kursFehlt.hidden = true;
+    vorschlaegeFuellen();
+  }
+
+  function auswahlFuellen() {
+    const { amTag, weitere } = kurseZumEintragen(zustand.bestand, werte.datum, heuteIso());
+    if (werte.kurs && ![...amTag, ...weitere].some((k) => k.kurs === werte.kurs)) {
+      weitere.push({ kurs: werte.kurs, name: anzeigename(werte.kurs, zustand.bestand.kursAlias), fach: null });
+    }
+    ohneZuordnung = new Map([...amTag, ...weitere].filter((k) => k.fach).map((k) => [k.kurs, k.fach]));
+    const option = (k) => el("option", { value: k.kurs, text: k.name });
+    auswahl.textContent = "";
+    auswahl.append(el("option", { value: "", text: "Kurs wählen" }));
+    if (amTag.length) {
+      auswahl.append(el("optgroup", { label: tagText(werte.datum) }, amTag.map(option)));
+      if (weitere.length) auswahl.append(el("optgroup", { label: "Weitere Kurse" }, weitere.map(option)));
+    } else {
+      auswahl.append(...weitere.map(option));
+    }
+    auswahl.value = werte.kurs;
+    if (auswahl.value !== werte.kurs) merken("kurs", auswahl.value);
+  }
+
+  // Kurse des Tages ohne Hausaufgabe. Vor dem Abruf weiß die App nur, dass im Archiv nichts steht.
+  function vorschlaegeFuellen() {
+    vorschlaege.textContent = "";
+    const r = alt ? null : kurseOhneHausaufgabe(new Date(), zustand.bestand, werte.datum);
+    vorschlaege.hidden = !r || !r.kurse.length;
+    if (vorschlaege.hidden) return;
+    vorschlaege.append(
+      el("p", { class: "vorschlaege-titel", text: `${tagText(r.datum)} ohne Hausaufgabe${r.abgerufen ? " im Schulmanager" : ""}` }),
+      el("div", { class: "chips", role: "group", "aria-label": "Kurs übernehmen" }, r.kurse.map((k) => el("button", {
+        type: "button", "aria-pressed": String(werte.kurs === k.kurs),
+        onclick: () => { kursSetzen(k.kurs); text.focus(); },
+      }, k.name))),
+    );
+    if (!r.abgerufen) vorschlaege.append(el("p", { class: "info", text: "Noch nicht abgerufen. Im Schulmanager kann schon etwas stehen." }));
+  }
+
+  auswahl.addEventListener("change", () => kursSetzen(auswahl.value));
+  text.value = werte.hausaufgabe;
+  text.addEventListener("input", () => {
+    merken("hausaufgabe", text.value);
+    if (text.value.trim()) textFehlt.hidden = true;
+  });
+  datum.addEventListener("change", () => {
+    if (!datum.value) { datum.value = werte.datum; return; }   // leeres Datum zurücknehmen
+    merken("datum", datum.value);
+    auswahlFuellen();
+    vorschlaegeFuellen();
+  });
+
+  const speichernKnopf = el("button", { type: "button", class: "primaer", onclick: () => {
+    const felder = { kurs: auswahl.value, datum: werte.datum, hausaufgabe: text.value };
+    kursFehlt.hidden = !!felder.kurs;
+    textFehlt.hidden = !!felder.hausaufgabe.trim();
+    if (!felder.kurs) return auswahl.focus();
+    if (!felder.hausaufgabe.trim()) return text.focus();
+    const best = zustand.bestand;
+    let r;
+    try {
+      r = alt ? eigenenEintragAendern(best.eintraege, alt.id, felder, heuteIso()) : eigenenEintragAnlegen(best.eintraege, felder, heuteIso());
+    } catch (fehler) {
+      melden("fehler", fehler.message);
+      return;
+    }
+    if (r.eintraege === best.eintraege) return bearbeitenBeenden();   // nichts geändert
+    best.eintraege = r.eintraege;
+    const fach = ohneZuordnung.get(felder.kurs);
+    if (fach && !Object.prototype.hasOwnProperty.call(best.kurszuordnung, fach)) {
+      best.kurszuordnung[fach] = { kurs: felder.kurs, quelle: "manuell", bestaetigt: true };
+    }
+    speichern();
+    const wo = `${anzeigename(r.eintrag.kurs, best.kursAlias)}, ${wochentag(r.eintrag.datum)}`;
+    if (alt) {
+      melden("ok", `Geändert: ${wo}`);   // wochentag() endet schon mit einem Punkt
+      bearbeitenBeenden();
+    } else {
+      zustand.entwurf = ENTWURF_LEER();
+      melden("ok", `Gespeichert: ${wo}`);
+      renderEintragen();
+    }
+  } }, "Speichern");
+
+  const loeschenKnopf = alt ? el("button", { type: "button", class: "gefahr", onclick: () => {
+    if (!window.confirm("Diesen selbst eingetragenen Eintrag löschen?")) return;
+    zustand.bestand.eintraege = eigenenEintragLoeschen(zustand.bestand.eintraege, alt.id);
+    speichern();
+    melden("ok", `Gelöscht: ${anzeigename(alt.kurs, zustand.bestand.kursAlias)}, ${wochentag(alt.datum)}`);
+    bearbeitenBeenden();
+  } }, "Löschen") : null;
+
+  auswahlFuellen();
+  vorschlaegeFuellen();
+  const feld = (id, titel, eingabe, ...rest) => el("div", { class: "formfeld" }, el("label", { for: id, text: titel }), eingabe, ...rest);
+  box.append(
+    vorschlaege,
+    feld("eintrag-kurs", "Kurs", auswahl, kursFehlt),
+    feld("eintrag-ha", "Hausaufgabe", text, textFehlt),
+    feld("eintrag-datum", "Aufgegeben am", datum, el("p", { class: "info", text: "Die Vorschau zeigt sie ab der nächsten Stunde des Kurses." })),
+    el("div", { class: "knopfreihe" }, speichernKnopf, loeschenKnopf),
+  );
+
+  if (alt) return;
+  const eigene = eigeneEintraege(bestand.eintraege).slice(0, 5);
+  if (!eigene.length) return;
+  box.append(el("h3", { text: "Selbst eingetragen" }), gruppe(eigene.map((e) =>
+    zeile(e.hausaufgabe.split("\n")[0], `${anzeigename(e.kurs, bestand.kursAlias)} · ${wochentag(e.datum)}`, () => bearbeitenOeffnen(e.id, "eintragen")))));
+}
+
+/** Selbst eingetragenen Eintrag ändern. zurueck: "archiv" (dorthin, wo er stand) oder "eintragen". */
+function bearbeitenOeffnen(id, zurueck) {
+  zustand.bearbeiten = { id, zurueck, scroll: window.scrollY };
+  ansichtWechseln("eintragen");
+  window.scrollTo(0, 0);
+  const titel = $("eintragen").querySelector(".seitenkopf h2");
+  if (titel) titel.focus({ preventScroll: true });
+}
+
+function bearbeitenBeenden() {
+  const b = zustand.bearbeiten;
+  const insArchiv = !!b && b.zurueck === "archiv";
+  zustand.bearbeiten = null;
+  ansichtWechseln(insArchiv ? "archiv" : "eintragen");
+  window.scrollTo(0, insArchiv ? b.scroll : 0);
 }
 
 // ---- Einstellungen ---------------------------------------------------------
@@ -714,7 +908,7 @@ const zeileMit = (titel, ...rechts) => el("div", { class: "einst-zeile" },
 function seiteUebersicht(box) {
   const { bestand } = zustand;
   const einst = bestand.einstellungen;
-  seitenKopf(box, zustand.vorher === "vorschau" ? "Vorschau" : "Archiv", () => ansichtWechseln(zustand.vorher), "Einstellungen");
+  seitenKopf(box, ANSICHT_NAMEN[zustand.vorher] || "Archiv", () => ansichtWechseln(zustand.vorher), "Einstellungen");
 
   if (zustand.speicherFehler) {
     box.append(el("div", { class: "meldung fehler" }, el("div", { class: "text" }, el("p", { text: zustand.speicherFehler }))));
@@ -925,6 +1119,8 @@ function archivLoeschen() {
   zustand.filterOffen = false;
   zustand.monatAuf = {};
   zustand.vorschauDatum = null;
+  zustand.entwurf = ENTWURF_LEER();
+  zustand.bearbeiten = null;
   zustand.ansicht = "archiv";
   zustand.vorher = "archiv";
   zustand.seite = [];
@@ -949,6 +1145,7 @@ function verdrahten() {
     else ansichtWechseln("archiv");
   });
   $("reiter-vorschau").addEventListener("click", () => { zustand.vorschauDatum = null; ansichtWechseln("vorschau"); });
+  $("reiter-eintragen").addEventListener("click", () => { zustand.bearbeiten = null; ansichtWechseln("eintragen"); });
   $("suche").addEventListener("input", () => { zustand.filter.suche = $("suche").value; renderListe(); });
   $("filter-knopf").addEventListener("click", () => { zustand.filterOffen = !zustand.filterOffen; renderFilter(); });
 

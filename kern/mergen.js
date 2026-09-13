@@ -9,7 +9,13 @@
 // Zusatzregel im selben Geist: ein LEERES Feld in der neuen Antwort überschreibt nie einen
 // vorhandenen Text. Sonst würde eine halb fehlgeschlagene Antwort (z. B. nur Hausaufgaben,
 // Inhalte-Teilanfrage mit Fehler) gespeicherte Themen löschen.
-// Reine Funktion: Eingaben werden nicht verändert.
+// Reine Funktionen: Eingaben werden nicht verändert.
+//
+// Eigene Einträge: Hausaufgaben, die jemand selbst einträgt, weil sie nicht im Schulmanager stehen.
+// Das sind normale Einträge mit position ab EIGENE_POSITION_AB. Der Schulmanager zählt je Kurs und
+// Tag ab 1, ein Abruf trifft deshalb nie ihre ID, und sie stehen unter den Einträgen der Lehrkraft.
+// Einzige Ausnahme von „Archiv schrumpft nie“: eigene Einträge lassen sich ändern und löschen,
+// alle anderen nicht.
 
 export function mergen(bestand, zeilen, heute) {
   const index = new Map(bestand.map((e) => [e.id, { ...e }]));
@@ -39,4 +45,71 @@ export function mergen(bestand, zeilen, heute) {
     }
   }
   return { eintraege: [...index.values()], neu, geaendert, unveraendert };
+}
+
+// ---------------------------------------------------------------------------
+// Eigene Einträge
+// ---------------------------------------------------------------------------
+
+export const EIGENE_POSITION_AB = 1001;
+
+const DATUM = /^\d{4}-\d{2}-\d{2}$/;
+
+export const istEigen = (e) => !!e && Number.isInteger(e.position) && e.position >= EIGENE_POSITION_AB;
+
+function eigeneFelder({ kurs, datum, hausaufgabe } = {}) {
+  const text = typeof hausaufgabe === "string" ? hausaufgabe.trim() : "";
+  if (typeof kurs !== "string" || !kurs) throw new Error("Kurs fehlt.");
+  if (!DATUM.test(datum || "")) throw new Error("Datum fehlt.");
+  if (!text) throw new Error("Hausaufgabe fehlt.");
+  return { kurs, datum, hausaufgabe: text };
+}
+
+function naechstePosition(eintraege, kurs, datum) {
+  let p = EIGENE_POSITION_AB - 1;
+  for (const e of eintraege) if (e.kurs === kurs && e.datum === datum && istEigen(e)) p = Math.max(p, e.position);
+  return p + 1;
+}
+
+/** → { eintraege, eintrag }. Wirft bei fehlendem Kurs, Datum oder Text. */
+export function eigenenEintragAnlegen(eintraege, felder, heute) {
+  const f = eigeneFelder(felder);
+  const position = naechstePosition(eintraege, f.kurs, f.datum);
+  const eintrag = {
+    id: `${f.kurs}|${f.datum}|${position}`, kurs: f.kurs, datum: f.datum, thema: "", hausaufgabe: f.hausaufgabe,
+    position, ersterfasst: heute, geaendert: null,
+  };
+  return { eintraege: [...eintraege, eintrag], eintrag };
+}
+
+/**
+ * → { eintraege, eintrag }. Gleicher Kurs und Tag: Text ersetzen. Sonst zieht der Eintrag unter
+ * einen neuen Schlüssel um, ersterfasst bleibt. Wirft, wenn die ID fehlt oder nicht eigen ist.
+ */
+export function eigenenEintragAendern(eintraege, id, felder, heute) {
+  const alt = eintraege.find((e) => e.id === id);
+  if (!istEigen(alt)) throw new Error("Nur selbst eingetragene Einträge lassen sich ändern.");
+  const f = eigeneFelder(felder);
+  if (f.kurs === alt.kurs && f.datum === alt.datum) {
+    if (f.hausaufgabe === alt.hausaufgabe) return { eintraege, eintrag: alt };
+    const eintrag = { ...alt, hausaufgabe: f.hausaufgabe, geaendert: heute };
+    return { eintraege: eintraege.map((e) => (e.id === id ? eintrag : e)), eintrag };
+  }
+  const rest = eintraege.filter((e) => e.id !== id);
+  const position = naechstePosition(rest, f.kurs, f.datum);
+  const eintrag = {
+    ...alt, id: `${f.kurs}|${f.datum}|${position}`, kurs: f.kurs, datum: f.datum, hausaufgabe: f.hausaufgabe,
+    position, geaendert: heute,
+  };
+  return { eintraege: [...rest, eintrag], eintrag };
+}
+
+/** Entfernt den Eintrag nur, wenn er selbst eingetragen ist. */
+export function eigenenEintragLoeschen(eintraege, id) {
+  return eintraege.filter((e) => e.id !== id || !istEigen(e));
+}
+
+/** Nur die eigenen, neuestes Datum zuerst, am selben Tag der zuletzt angelegte zuerst. */
+export function eigeneEintraege(eintraege) {
+  return eintraege.filter(istEigen).sort((a, b) => b.datum.localeCompare(a.datum) || b.position - a.position);
 }

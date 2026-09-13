@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mergen } from "../kern/mergen.js";
+import {
+  mergen, EIGENE_POSITION_AB, istEigen, eigenenEintragAnlegen, eigenenEintragAendern, eigenenEintragLoeschen, eigeneEintraege,
+} from "../kern/mergen.js";
 import { zeilenAusRohantwort } from "../kern/rohantwort.js";
 import { kombiniert } from "./hilfen.js";
 
@@ -63,4 +65,78 @@ test("mergen: mitgebrachtes ersterfasst (Export-Wiederherstellung) bleibt erhalt
   const e = mergen([], [{ id: "A|2026-09-01|1", kurs: "A", datum: "2026-09-01", position: 1, thema: "x", hausaufgabe: "", ersterfasst: "2026-05-01", geaendert: "2026-06-01" }], "2026-09-10");
   assert.equal(e.eintraege[0].ersterfasst, "2026-05-01");
   assert.equal(e.eintraege[0].geaendert, "2026-06-01");
+});
+
+// Eigene Einträge ---------------------------------------------------------
+
+const lehrkraft = (kurs, datum, position = 1, hausaufgabe = "") =>
+  ({ id: `${kurs}|${datum}|${position}`, kurs, datum, thema: "Thema", hausaufgabe, position, ersterfasst: "2026-09-14", geaendert: null });
+const felder = (kurs, datum, hausaufgabe) => ({ kurs, datum, hausaufgabe });
+
+test("eigene Einträge: anlegen ab Position 1001 je Kurs und Tag, Text getrimmt, Eingabe unverändert", () => {
+  const alt = [lehrkraft("Chemie", "2026-09-14")];
+  const kopie = JSON.stringify(alt);
+  const a = eigenenEintragAnlegen(alt, felder("Chemie", "2026-09-14", "  S. 45 Nr. 3 \n"), "2026-09-14");
+  assert.equal(JSON.stringify(alt), kopie);
+  assert.deepEqual(a.eintrag, {
+    id: "Chemie|2026-09-14|1001", kurs: "Chemie", datum: "2026-09-14", thema: "", hausaufgabe: "S. 45 Nr. 3",
+    position: 1001, ersterfasst: "2026-09-14", geaendert: null,
+  });
+  const b = eigenenEintragAnlegen(a.eintraege, felder("Chemie", "2026-09-14", "Protokoll"), "2026-09-14");
+  assert.equal(b.eintrag.position, 1002);
+  const c = eigenenEintragAnlegen(b.eintraege, felder("Physik", "2026-09-14", "x"), "2026-09-14");
+  assert.equal(c.eintrag.position, EIGENE_POSITION_AB);
+  assert.deepEqual(c.eintraege.map(istEigen), [false, true, true, true]);
+});
+
+test("eigene Einträge: ohne Kurs, Datum oder Text wird nichts angelegt", () => {
+  assert.throws(() => eigenenEintragAnlegen([], felder("", "2026-09-14", "x"), "2026-09-14"), /Kurs/);
+  assert.throws(() => eigenenEintragAnlegen([], felder("Chemie", "14.09.2026", "x"), "2026-09-14"), /Datum/);
+  assert.throws(() => eigenenEintragAnlegen([], felder("Chemie", "2026-09-14", " \n "), "2026-09-14"), /Hausaufgabe/);
+});
+
+test("eigene Einträge: ein späterer Abruf lässt sie unberührt, auch mit Einträgen am selben Tag", () => {
+  const { eintraege } = eigenenEintragAnlegen([], felder("Chemie", "2026-09-14", "S. 45"), "2026-09-14");
+  const abruf = [
+    { id: "Chemie|2026-09-14|1", kurs: "Chemie", datum: "2026-09-14", position: 1, thema: "Säuren", hausaufgabe: "S. 45 Nr. 3" },
+    { id: "Chemie|2026-09-14|2", kurs: "Chemie", datum: "2026-09-14", position: 2, thema: "Basen", hausaufgabe: "" },
+  ];
+  const r = mergen(eintraege, abruf, "2026-09-15");
+  assert.deepEqual([r.neu, r.geaendert, r.unveraendert], [2, 0, 0]);
+  assert.deepEqual(r.eintraege.find((e) => e.id === "Chemie|2026-09-14|1001"), eintraege[0]);
+  const nochmal = mergen(r.eintraege, eintraege, "2026-09-16");   // Export-Datei mit dem eigenen Eintrag erneut importiert
+  assert.deepEqual([nochmal.neu, nochmal.geaendert, nochmal.eintraege.length], [0, 0, 3]);
+});
+
+test("eigene Einträge ändern: Text setzt geaendert; anderer Kurs oder Tag bekommt neuen Schlüssel, ersterfasst bleibt", () => {
+  const a = eigenenEintragAnlegen([lehrkraft("Physik", "2026-09-15")], felder("Chemie", "2026-09-14", "S. 45"), "2026-09-14");
+  const text = eigenenEintragAendern(a.eintraege, a.eintrag.id, felder("Chemie", "2026-09-14", "S. 46"), "2026-09-15");
+  assert.equal(text.eintrag.id, "Chemie|2026-09-14|1001");
+  assert.equal(text.eintrag.hausaufgabe, "S. 46");
+  assert.equal(text.eintrag.geaendert, "2026-09-15");
+  assert.equal(text.eintraege.length, 2);
+  const gleich = eigenenEintragAendern(text.eintraege, text.eintrag.id, felder("Chemie", "2026-09-14", " S. 46 "), "2026-09-16");
+  assert.equal(gleich.eintraege, text.eintraege, "gleicher Text: nichts geändert");
+  const um = eigenenEintragAendern(text.eintraege, text.eintrag.id, felder("Physik", "2026-09-15", "S. 46"), "2026-09-16");
+  assert.deepEqual(um.eintrag, {
+    id: "Physik|2026-09-15|1001", kurs: "Physik", datum: "2026-09-15", thema: "", hausaufgabe: "S. 46",
+    position: 1001, ersterfasst: "2026-09-14", geaendert: "2026-09-16",
+  });
+  assert.deepEqual(um.eintraege.map((e) => e.id), ["Physik|2026-09-15|1", "Physik|2026-09-15|1001"]);
+});
+
+test("eigene Einträge: Einträge aus dem Schulmanager lassen sich weder ändern noch löschen", () => {
+  const alt = [lehrkraft("Chemie", "2026-09-14")];
+  assert.throws(() => eigenenEintragAendern(alt, "Chemie|2026-09-14|1", felder("Chemie", "2026-09-14", "x"), "2026-09-15"), /selbst eingetragen/);
+  assert.throws(() => eigenenEintragAendern(alt, "gibt|es|nicht", felder("Chemie", "2026-09-14", "x"), "2026-09-15"), /selbst eingetragen/);
+  assert.deepEqual(eigenenEintragLoeschen(alt, "Chemie|2026-09-14|1"), alt);
+});
+
+test("eigene Einträge: löschen entfernt nur den einen; eigeneEintraege neuestes Datum zuerst", () => {
+  let r = eigenenEintragAnlegen([lehrkraft("Chemie", "2026-09-14")], felder("Chemie", "2026-09-11", "a"), "2026-09-11");
+  r = eigenenEintragAnlegen(r.eintraege, felder("Chemie", "2026-09-14", "b"), "2026-09-14");
+  r = eigenenEintragAnlegen(r.eintraege, felder("Chemie", "2026-09-14", "c"), "2026-09-14");
+  assert.deepEqual(eigeneEintraege(r.eintraege).map((e) => e.hausaufgabe), ["c", "b", "a"]);
+  assert.deepEqual(eigenenEintragLoeschen(r.eintraege, "Chemie|2026-09-14|1001").map((e) => e.id),
+    ["Chemie|2026-09-14|1", "Chemie|2026-09-11|1001", "Chemie|2026-09-14|1002"]);
 });

@@ -122,3 +122,9 @@ test("Migration: letzterAbruf aus Schema 1 wird zum letzten Sync-Erfolg, Schema 
   const v2 = pruefeBestand({ schemaVersion: 2, letzterAbruf: "2026-09-10T18:04:00.000Z", eintraege: [] });
   assert.equal(v2.sync.letzterErfolg, null);
 });
+
+test("pruefeBestand und Export behalten selbst eingetragene Einträge (position ab 1001) unverändert", () => {
+  const b = leererBestand();
+  b.eintraege = [{ id: "Chemie|2026-09-14|1001", kurs: "Chemie", datum: "2026-09-14", thema: "", hausaufgabe: "S. 45", position: 1001, ersterfasst: "2026-09-14", geaendert: null }];
+  assert.deepEqual(pruefeBestand(JSON.parse(exportText(b))).eintraege, b.eintraege);
+});

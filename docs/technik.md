@@ -61,6 +61,18 @@ Klausurdatum die Liste ein (`eingegrenzt`), sind alle Monate offen. Sonst ist je
 neueste Monat offen, ältere öffnen sich per Antippen; das bleibt bis zum Neuladen gemerkt.
 „Mit Hausaufgabe“ allein klappt nichts auf, weil die Liste über ein Schuljahr lang bleibt.
 
+**Eintragen.** Hausaufgaben, die nicht im Schulmanager stehen, lassen sich selbst notieren: Kurs,
+Hausaufgabe, „Aufgegeben am“. Das Datum ist der Tag des Aufgebens, nicht der Abgabe. Vorbelegt ist
+der letzte Tag, dessen Unterricht schon begonnen hat (`eintragDatum`). Das Auswahlfeld zeigt zuerst
+die Kurse dieses Tages, dann alle weiteren, auch Fächer aus dem Stundenplan ohne jeden Eintrag
+(`kurseZumEintragen`). Wer so ein Fach wählt, ordnet es beim Speichern dem gleichnamigen Kurs zu.
+Über dem Formular stehen als Vorschläge die Kurse des Tages ohne Hausaufgabe
+(`kurseOhneHausaufgabe`, nur gemessene Tage). Lag der letzte Abruf nach Beginn des Tages, heißt
+das „ohne Hausaufgabe im Schulmanager“, sonst steht dabei, dass noch nicht abgerufen wurde. Unter
+dem Formular stehen die fünf neuesten eigenen Einträge. Im Archiv tragen eigene Einträge
+„Selbst eingetragen · Ändern“, auf der Vorschau-Karte steht „selbst eingetragen“ in der
+Meta-Zeile. Ändern und Löschen gibt es nur für eigene Einträge.
+
 **Einstellungen.** Eine Übersicht mit einer Zeile je Thema (Beim Öffnen, Kurse, Vorschau,
 Daten), jeweils mit dem aktuellen Stand darunter. Details stehen auf Unterseiten.
 
@@ -162,6 +174,12 @@ einstellungen: { wochenplan: { fensterTage, overrides }, freieTage, schulbeginn,
 diesem Tag". `position` ist deshalb eine laufende Nummer je Kurs und Tag in Lieferreihenfolge
 und wird nirgends angezeigt. Kursnamen werden roh gespeichert, ein Alias wirkt nur beim Anzeigen.
 
+Selbst eingetragene Einträge sind normale Einträge mit `thema: ""` und `position` ab 1001
+(`EIGENE_POSITION_AB` in `kern/mergen.js`). Der Schulmanager zählt je Kurs und Tag ab 1, ein Abruf
+trifft ihre ID deshalb nie, und sie stehen unter den Einträgen der Lehrkraft. Ein eigenes Feld
+braucht es nicht: Prüfung beim Lesen, Export und Import behalten sie unverändert. Sie zählen wie
+jeder Eintrag, schließen also auch „Letzte Stunde fehlt“.
+
 Zwei Arten von Daten, zwei Regeln: `eintraege` ist das Archiv und schrumpft nie. `stundenplan`
 ist ein Cache; ein neuer Abruf ersetzt die Tage im abgerufenen Fenster vollständig, damit
 entfallene Stunden auch wieder verschwinden. Der Cache enthält weder Lehrkraft noch IDs noch
@@ -179,6 +197,11 @@ Einstellungen die lokalen Werte; freie Tage werden vereinigt.
 Beim Import einer neuen Antwort: unbekannte ID einfügen, gleicher Text nichts tun, anderer
 Text ersetzen und `geaendert` setzen, fehlende Einträge behalten. Das Archiv schrumpft nie.
 Ein leeres Feld in der Antwort überschreibt keinen gespeicherten Text.
+
+Einzige Ausnahme vom Schrumpfen: eigene Einträge lassen sich ändern und löschen. Ändern mit
+anderem Kurs oder Tag legt den Eintrag unter neuem Schlüssel an, `ersterfasst` bleibt. Bekannte
+Grenze: Legen zwei Geräte am selben Tag für denselben Kurs je einen eigenen Eintrag an, haben beide
+die ID `…|1001`. Beim Import einer Export-Datei ersetzt dann der eine Text den anderen.
 
 Bekannte Grenze des Schlüssels: löscht die Lehrkraft den ersten von zwei Einträgen eines
 Tages, rückt der zweite auf Position 1 (erscheint als geändert) und Position 2 bleibt als

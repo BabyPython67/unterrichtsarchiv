@@ -54,7 +54,7 @@ body {
   padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 
-button, input {
+button, input, textarea {
   font: inherit;
   color: inherit;
 }
@@ -81,7 +81,7 @@ button.gefahr {
   border-color: var(--gefahr);
 }
 
-button:focus-visible, input:focus-visible, a:focus-visible {
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
   outline: 2px solid var(--akzent);
   outline-offset: 2px;
 }
@@ -518,7 +518,7 @@ input[type="time"] {
 /* Link zum Schulmanager und „Wie geht das?“ nebeneinander unter dem Hinweistext */
 .hinweis .aktionen { display: flex; flex-wrap: wrap; align-items: center; gap: 0 18px; margin-top: 2px; }
 .hinweis .aktionen a { margin-left: 0; padding: 6px 0; }
-.hinweis .textknopf {
+.textknopf {
   min-height: 0;
   padding: 6px 0;
   border: 0;
@@ -652,3 +652,46 @@ input[type="time"] {
 }
 
 .frei-zeile button { min-height: 36px; padding: 4px 12px; font-size: 14px; }
+
+/* Eintragen: selbst notierte Hausaufgaben */
+.eintragen {
+  padding: 12px 16px 40px;
+  max-width: 780px;
+}
+
+.eintragen-titel { margin: 4px 0 2px; font-size: 20px; font-weight: 650; }
+.eintragen .info { margin: 4px 0 0; color: var(--leise); font-size: 14px; }
+.eintragen h3 { margin: 28px 0 0; font-size: 17px; font-weight: 650; }
+.eintragen .knopfreihe { margin-top: 16px; }
+
+.vorschlaege { margin-top: 16px; }
+.vorschlaege-titel { margin: 0 0 6px; font-weight: 600; }
+
+.formfeld { display: grid; gap: 4px; max-width: 520px; margin-top: 16px; }
+.formfeld label { color: var(--leise); font-size: 14px; }
+.formfeld select, .formfeld textarea { width: 100%; }
+.formfeld input[type="date"] { justify-self: start; }
+.fehlt { margin: 0; color: var(--warn-fg); font-size: 14px; font-weight: 600; }
+
+/* 16px Schrift, sonst zoomt das iPhone beim Antippen */
+textarea {
+  min-height: 88px;
+  padding: 8px 12px;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--karte);
+  line-height: 1.45;
+  resize: vertical;
+}
+
+button.primaer {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--akzent-text);
+  font-weight: 600;
+}
+
+/* Selbst eingetragener Eintrag im Archiv: leiser Hinweis mit „Ändern“ */
+.inhalt > .ha:first-child { margin-top: 0; }
+.eigen { margin-top: 4px; color: var(--leise); font-size: 13px; }
+.eigen .textknopf { padding: 8px 4px; margin: -8px -4px; color: var(--akzent); font-size: 13px; }

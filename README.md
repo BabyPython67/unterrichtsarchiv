@@ -66,6 +66,20 @@ Für Tage, die der Stundenplan noch nicht abdeckt, schätzt die App aus den bish
 welche Kurse an welchem Wochentag sind. Unter Einstellungen → Vorschau lassen sich der Wochenplan
 korrigieren und Ferien oder freie Tage eintragen.
 
+## Eintragen
+
+Manche Hausaufgaben werden nur im Unterricht genannt und stehen nie im Schulmanager. Unter dem
+Reiter „Eintragen“ lassen sie sich selbst notieren: Kurs wählen, Hausaufgabe eintippen, Speichern.
+Danach stehen sie im Archiv und in der Vorschau wie alle anderen.
+
+- „Aufgegeben am“ ist der Tag, an dem die Hausaufgabe aufgegeben wurde, nicht der Abgabetag.
+  Vorbelegt ist der letzte Schultag, an dem schon Unterricht war. Die Vorschau zeigt die
+  Hausaufgabe ab der nächsten Stunde des Kurses.
+- Oben stehen die Kurse dieses Tages, die noch keine Hausaufgabe haben. Nach dem Abruf heißt das:
+  Im Schulmanager steht für sie nichts. Antippen wählt den Kurs aus.
+- Selbst eingetragene Hausaufgaben sind im Archiv markiert. „Ändern“ öffnet sie zum Korrigieren
+  oder Löschen. Einträge aus dem Schulmanager lassen sich nicht ändern.
+
 ## Was im Archiv fehlen kann
 
 Die App übernimmt nur, was Lehrkräfte im Schulmanager eintragen.
@@ -73,7 +87,7 @@ Die App übernimmt nur, was Lehrkräfte im Schulmanager eintragen.
 - Nicht alle Lehrkräfte tragen Unterrichtsinhalte ein. Manche Kurse haben deshalb kaum Einträge,
   oder dort steht „Kein Inhalt eingetragen“.
 - Hausaufgaben, die nur im Unterricht genannt und nicht im Schulmanager eingetragen wurden, fehlen
-  auch im Archiv.
+  auch im Archiv. Sie lassen sich unter „Eintragen“ selbst notieren.
 
 Keine Hausaufgabe in der App heißt also nicht sicher, dass nichts auf ist.
 
@@ -112,6 +126,9 @@ ersten Mal. Ob es aktuell ist, zeigt die Build-Kennung: Sie steht auf der Leseze
 der Box, die nach dem Antippen im Schulmanager erscheint. Stimmen beide überein, passt es. Bei
 allen anderen Änderungen reicht es, die App neu zu laden.
 
+- **13.09.2026:** Neuer Reiter „Eintragen“: Hausaufgaben, die nicht im Schulmanager stehen, selbst
+  notieren und später ändern oder löschen. Vorschläge zeigen, welche Kurse des Tages noch keine
+  Hausaufgabe haben.
 - **13.09.2026:** Das Archiv beginnt mit einer Kursliste. Jeder Kurs hat eine eigene Seite, die
   neuesten Einträge stehen oben, ältere Monate sind zugeklappt. Suche und Filter über alle Kurse
   gibt es weiterhin.
