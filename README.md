@@ -70,6 +70,17 @@ Woche. Was einmal im Archiv ist, bleibt dort, auch wenn es im Schulmanager spät
   dabei den Schalter **„Als Web-App öffnen“ ausschalten**. Ist er an, hat das Symbol einen eigenen
   Speicher und bekommt keine Daten vom Lesezeichen.
 
+## Was im Archiv fehlen kann
+
+Die App übernimmt nur, was Lehrkräfte im Schulmanager eintragen.
+
+- Nicht alle Lehrkräfte tragen Unterrichtsinhalte ein. Manche Kurse haben deshalb kaum Einträge,
+  oder dort steht „Kein Inhalt eingetragen“.
+- Hausaufgaben, die nur im Unterricht genannt und nicht im Schulmanager eingetragen wurden, fehlen
+  auch im Archiv.
+
+Keine Hausaufgabe in der App heißt also nicht sicher, dass nichts auf ist.
+
 ## Daten
 
 - Es gibt keinen Server und kein Konto. Die App fragt nie nach dem Passwort.
