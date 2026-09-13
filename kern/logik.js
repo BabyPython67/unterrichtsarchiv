@@ -163,10 +163,16 @@ export function tagesplan(datum, stundenplan, wochenplan, einstellungen, kurszuo
       .sort((a, b) => (a.stunde || 0) - (b.stunde || 0));
     for (const s of stunden) {
       const zu = kurszuordnung[s.fach];
+      if (zu && zu.kurs === null) continue;                       // „Nicht anzeigen“, vom Nutzer gesetzt
       const kurs = zu && typeof zu.kurs === "string" && zu.kurs ? zu.kurs : null;
       const status = s.status || "normal";
       const eintrag = { kurs, fach: s.fach, stunden: [s.stunde], status, zuordnungFehlt: !kurs };
-      if (status === "entfall") { entfallen.push(eintrag); continue; }
+      if (status === "entfall") {
+        const gleich = entfallen.find((e) => e.fach === s.fach);     // Doppelstunde nur einmal nennen
+        if (gleich) gleich.stunden.push(s.stunde);
+        else entfallen.push(eintrag);
+        continue;
+      }
       const letzte = kurse[kurse.length - 1];
       if (letzte && letzte.fach === s.fach && letzte.status === status) letzte.stunden.push(s.stunde);
       else kurse.push(eintrag);
@@ -250,7 +256,8 @@ export function tagLabel(datum, heute) {
  * datum erzwingt einen Tag (Pfeilnavigation); sonst naechsterSchultag.
  * → { datum, label, wochentag, herkunft, angepasst, kurse: [{ kurs, name, fach, thema, hausaufgabe,
  *      letztesDatum, vorTagen, alt, sicherheit, status, stunden, zuordnungFehlt }], entfallen, anzahlHA }
- * Kurse mit Hausaufgabe zuerst (stabil), damit Mitteilung und Viewer dieselbe Reihenfolge zeigen.
+ * Reihenfolge: gemessen wie im Stundenplan (erste Stunde oben); sonst Kurse mit Hausaufgabe
+ * zuerst (stabil). Mitteilung und Viewer zeigen dieselbe Reihenfolge.
  */
 export function baueDigest(jetzt, daten) {
   const einst = mitStandard(daten.einstellungen);
@@ -283,15 +290,17 @@ export function baueDigest(jetzt, daten) {
       hausaufgabe,
     };
   });
+  // Gemessen: Reihenfolge des Stundenplans, erste Stunde oben. Sonst gibt es keine echte
+  // Reihenfolge, dann Kurse mit Hausaufgabe zuerst (stabil).
   const mitHa = kurse.filter((k) => k.hausaufgabe);
-  const ohneHa = kurse.filter((k) => !k.hausaufgabe);
+  const geordnet = plan.herkunft === "gemessen" ? kurse : [...mitHa, ...kurse.filter((k) => !k.hausaufgabe)];
   return {
     datum,
     label: tagLabel(datum, heute),
     wochentag: plan.wochentag,
     herkunft: plan.herkunft,
     angepasst: plan.angepasst,
-    kurse: [...mitHa, ...ohneHa],
+    kurse: geordnet,
     entfallen: plan.entfallen.map((k) => ({ kurs: k.kurs, fach: k.fach, name: k.kurs ? anzeigename(k.kurs, daten.kursAlias || {}) : k.fach })),
     anzahlHA: mitHa.length,
   };
@@ -344,6 +353,32 @@ export function stundenplanUebernehmen(stundenplan, lieferung) {
     fenster = { von: von < f.von ? von : f.von, bis: bis > f.bis ? bis : f.bis };
   }
   return { abgerufenAm: lieferung.abgerufenAm || null, fenster, tage };
+}
+
+/**
+ * Fächer aus dem Stundenplan-Cache ohne Zuordnung mit einem gleichnamigen Kurs aus dem Archiv
+ * verbinden (Groß/Klein und Randleerzeichen egal). Vorhandene Einträge bleiben unangetastet,
+ * auch „nicht anzeigen“ (kurs: null). Passt nichts, bleibt das Fach offen und die Vorschau
+ * fragt nach. Reine Funktion.
+ */
+export function kurszuordnungErgaenzen(kurszuordnung, stundenplan, eintraege) {
+  const zu = { ...(kurszuordnung || {}) };
+  const kurse = new Map();
+  for (const e of eintraege || []) {
+    if (!e || typeof e.kurs !== "string" || !e.kurs) continue;
+    const k = e.kurs.trim().toLowerCase();
+    if (!kurse.has(k)) kurse.set(k, e.kurs);
+  }
+  const tage = stundenplan && stundenplan.tage ? Object.values(stundenplan.tage) : [];
+  for (const liste of tage) {
+    for (const s of liste || []) {
+      const fach = s && typeof s.fach === "string" ? s.fach : "";
+      if (!fach || Object.prototype.hasOwnProperty.call(zu, fach)) continue;
+      const kurs = kurse.get(fach.trim().toLowerCase());
+      if (kurs) zu[fach] = { kurs, quelle: "auto", bestaetigt: false };
+    }
+  }
+  return zu;
 }
 
 // ---------------------------------------------------------------------------

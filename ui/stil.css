@@ -322,6 +322,7 @@ mark {
 
 @media (min-width: 640px) {
   .kurs-zeile { grid-template-columns: 1.4fr 1fr 1fr; align-items: end; gap: 12px; }
+  .kurs-zeile.zwei { grid-template-columns: 1.4fr 2fr; }
 }
 
 .knopfreihe { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
@@ -486,7 +487,6 @@ input[type="time"] {
 .karte .zeile-eingabe { margin-top: 8px; }
 
 .entfallen { margin: 14px 0 0; color: var(--leise); font-size: 14px; }
-.entfallen s { margin-right: 6px; }
 
 /* Einstellungen: Wochenplan und freie Tage */
 .wochenplan { display: grid; gap: 8px; }

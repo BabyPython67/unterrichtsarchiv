@@ -1,0 +1,1520 @@
+{
+  "results": [
+    {
+      "status": 200,
+      "data": [
+        {
+          "date": "2026-09-14",
+          "classHour": {
+            "id": 1,
+            "number": "4"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 2,
+              "name": "R07"
+            },
+            "subject": {
+              "id": 3,
+              "abbreviation": "M",
+              "name": "Mathematik",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 4,
+                "abbreviation": "LK4",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 4"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 6,
+                "name": "ML2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "ML2",
+            "lessonId": 7,
+            "courseId": 8
+          }
+        },
+        {
+          "date": "2026-09-18",
+          "classHour": {
+            "id": 9,
+            "number": "3"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 2,
+              "name": "R07"
+            },
+            "subject": {
+              "id": 3,
+              "abbreviation": "M",
+              "name": "Mathematik",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 4,
+                "abbreviation": "LK4",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 4"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 6,
+                "name": "ML2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "ML2",
+            "lessonId": 10,
+            "courseId": 8
+          }
+        },
+        {
+          "date": "2026-09-14",
+          "classHour": {
+            "id": 9,
+            "number": "3"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 2,
+              "name": "R07"
+            },
+            "subject": {
+              "id": 3,
+              "abbreviation": "M",
+              "name": "Mathematik",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 4,
+                "abbreviation": "LK4",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 4"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 6,
+                "name": "ML2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "ML2",
+            "lessonId": 11,
+            "courseId": 8
+          }
+        },
+        {
+          "date": "2026-09-18",
+          "classHour": {
+            "id": 1,
+            "number": "4"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 2,
+              "name": "R07"
+            },
+            "subject": {
+              "id": 3,
+              "abbreviation": "M",
+              "name": "Mathematik",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 4,
+                "abbreviation": "LK4",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 4"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 6,
+                "name": "ML2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "ML2",
+            "lessonId": 12,
+            "courseId": 8
+          }
+        },
+        {
+          "date": "2026-09-17",
+          "classHour": {
+            "id": 1,
+            "number": "4"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 2,
+              "name": "R07"
+            },
+            "subject": {
+              "id": 3,
+              "abbreviation": "M",
+              "name": "Mathematik",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 4,
+                "abbreviation": "LK4",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 4"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 6,
+                "name": "ML2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "ML2",
+            "lessonId": 13,
+            "courseId": 8
+          }
+        },
+        {
+          "date": "2026-09-15",
+          "classHour": {
+            "id": 14,
+            "number": "1"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 15,
+              "name": "R10"
+            },
+            "subject": {
+              "id": 16,
+              "abbreviation": "L7",
+              "name": "Lateinisch, Beginn in Jahrgangsklasse 7",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 17,
+                "abbreviation": "LK17",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 17"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 18,
+                "name": "LG1_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "LG1",
+            "lessonId": 19,
+            "courseId": 20
+          }
+        },
+        {
+          "date": "2026-09-18",
+          "classHour": {
+            "id": 21,
+            "number": "5"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 15,
+              "name": "R10"
+            },
+            "subject": {
+              "id": 16,
+              "abbreviation": "L7",
+              "name": "Lateinisch, Beginn in Jahrgangsklasse 7",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 17,
+                "abbreviation": "LK17",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 17"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 18,
+                "name": "LG1_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "LG1",
+            "lessonId": 22,
+            "courseId": 20
+          }
+        },
+        {
+          "date": "2026-09-15",
+          "classHour": {
+            "id": 23,
+            "number": "2"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 15,
+              "name": "R10"
+            },
+            "subject": {
+              "id": 16,
+              "abbreviation": "L7",
+              "name": "Lateinisch, Beginn in Jahrgangsklasse 7",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 17,
+                "abbreviation": "LK17",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 17"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 18,
+                "name": "LG1_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "LG1",
+            "lessonId": 24,
+            "courseId": 20
+          }
+        },
+        {
+          "date": "2026-09-15",
+          "classHour": {
+            "id": 25,
+            "number": "6"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 26,
+              "name": "R05"
+            },
+            "subject": {
+              "id": 27,
+              "abbreviation": "PsG1",
+              "name": null,
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 28,
+                "abbreviation": "LK28",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 28"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 29,
+                "name": "PsG1_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "PsG1",
+            "lessonId": 30,
+            "courseId": 31
+          }
+        },
+        {
+          "date": "2026-09-15",
+          "classHour": {
+            "id": 32,
+            "number": "7"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 26,
+              "name": "R05"
+            },
+            "subject": {
+              "id": 27,
+              "abbreviation": "PsG1",
+              "name": null,
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 28,
+                "abbreviation": "LK28",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 28"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 29,
+                "name": "PsG1_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "PsG1",
+            "lessonId": 33,
+            "courseId": 31
+          }
+        },
+        {
+          "date": "2026-09-16",
+          "classHour": {
+            "id": 1,
+            "number": "4"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 26,
+              "name": "R05"
+            },
+            "subject": {
+              "id": 27,
+              "abbreviation": "PsG1",
+              "name": null,
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 28,
+                "abbreviation": "LK28",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 28"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 29,
+                "name": "PsG1_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "PsG1",
+            "lessonId": 34,
+            "courseId": 31
+          }
+        },
+        {
+          "date": "2026-09-16",
+          "classHour": {
+            "id": 25,
+            "number": "6"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 15,
+              "name": "R10"
+            },
+            "subject": {
+              "id": 35,
+              "abbreviation": "GE",
+              "name": "Geschichte",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 17,
+                "abbreviation": "LK17",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 17"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 36,
+                "name": "GeZ4_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "GeZ4",
+            "lessonId": 37,
+            "courseId": 38
+          }
+        },
+        {
+          "date": "2026-09-16",
+          "classHour": {
+            "id": 21,
+            "number": "5"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 15,
+              "name": "R10"
+            },
+            "subject": {
+              "id": 35,
+              "abbreviation": "GE",
+              "name": "Geschichte",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 17,
+                "abbreviation": "LK17",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 17"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 36,
+                "name": "GeZ4_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "GeZ4",
+            "lessonId": 39,
+            "courseId": 38
+          }
+        },
+        {
+          "date": "2026-09-18",
+          "classHour": {
+            "id": 25,
+            "number": "6"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 40,
+              "name": "R11"
+            },
+            "subject": {
+              "id": 41,
+              "abbreviation": "E",
+              "name": "Englisch",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 42,
+                "abbreviation": "LK42",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 42"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 43,
+                "name": "EG4_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "EG4",
+            "lessonId": 44,
+            "courseId": 45
+          }
+        },
+        {
+          "date": "2026-09-17",
+          "classHour": {
+            "id": 21,
+            "number": "5"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 40,
+              "name": "R11"
+            },
+            "subject": {
+              "id": 41,
+              "abbreviation": "E",
+              "name": "Englisch",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 42,
+                "abbreviation": "LK42",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 42"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 43,
+                "name": "EG4_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "EG4",
+            "lessonId": 46,
+            "courseId": 45
+          }
+        },
+        {
+          "date": "2026-09-17",
+          "classHour": {
+            "id": 25,
+            "number": "6"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 40,
+              "name": "R11"
+            },
+            "subject": {
+              "id": 41,
+              "abbreviation": "E",
+              "name": "Englisch",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 42,
+                "abbreviation": "LK42",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 42"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 43,
+                "name": "EG4_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "EG4",
+            "lessonId": 47,
+            "courseId": 45
+          }
+        },
+        {
+          "date": "2026-09-15",
+          "classHour": {
+            "id": 1,
+            "number": "4"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 48,
+              "name": "R09"
+            },
+            "subject": {
+              "id": 49,
+              "abbreviation": "D",
+              "name": "Deutsch",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 50,
+                "abbreviation": "LK50",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 50"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 51,
+                "name": "DG3_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "DG3",
+            "lessonId": 52,
+            "courseId": 53
+          }
+        },
+        {
+          "date": "2026-09-15",
+          "classHour": {
+            "id": 9,
+            "number": "3"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 48,
+              "name": "R09"
+            },
+            "subject": {
+              "id": 49,
+              "abbreviation": "D",
+              "name": "Deutsch",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 50,
+                "abbreviation": "LK50",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 50"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 51,
+                "name": "DG3_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "DG3",
+            "lessonId": 54,
+            "courseId": 53
+          }
+        },
+        {
+          "date": "2026-09-16",
+          "classHour": {
+            "id": 9,
+            "number": "3"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 48,
+              "name": "R09"
+            },
+            "subject": {
+              "id": 49,
+              "abbreviation": "D",
+              "name": "Deutsch",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 50,
+                "abbreviation": "LK50",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 50"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 51,
+                "name": "DG3_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "DG3",
+            "lessonId": 55,
+            "courseId": 53
+          }
+        },
+        {
+          "date": "2026-09-14",
+          "comment": null,
+          "classHour": {
+            "id": 21,
+            "number": "5"
+          },
+          "type": "cancelledLesson",
+          "originalLessons": [
+            {
+              "room": {
+                "id": 56,
+                "name": "R08"
+              },
+              "subject": {
+                "id": 57,
+                "abbreviation": "KU",
+                "name": "Kunst",
+                "isPseudoSubject": false
+              },
+              "teachers": [
+                {
+                  "id": 58,
+                  "abbreviation": "LK58",
+                  "firstname": "Vorname",
+                  "lastname": "Lehrkraft 58"
+                }
+              ],
+              "classes": [
+                {
+                  "id": 5,
+                  "name": "Q2"
+                }
+              ],
+              "studentGroups": [
+                {
+                  "id": 59,
+                  "name": "KuG2_13",
+                  "classId": null
+                }
+              ],
+              "subjectLabel": "KuG2",
+              "lessonId": 60,
+              "courseId": 61
+            }
+          ],
+          "isCancelled": true
+        },
+        {
+          "date": "2026-09-14",
+          "comment": null,
+          "classHour": {
+            "id": 25,
+            "number": "6"
+          },
+          "type": "cancelledLesson",
+          "originalLessons": [
+            {
+              "room": {
+                "id": 56,
+                "name": "R08"
+              },
+              "subject": {
+                "id": 57,
+                "abbreviation": "KU",
+                "name": "Kunst",
+                "isPseudoSubject": false
+              },
+              "teachers": [
+                {
+                  "id": 58,
+                  "abbreviation": "LK58",
+                  "firstname": "Vorname",
+                  "lastname": "Lehrkraft 58"
+                }
+              ],
+              "classes": [
+                {
+                  "id": 5,
+                  "name": "Q2"
+                }
+              ],
+              "studentGroups": [
+                {
+                  "id": 59,
+                  "name": "KuG2_13",
+                  "classId": null
+                }
+              ],
+              "subjectLabel": "KuG2",
+              "lessonId": 62,
+              "courseId": 61
+            }
+          ],
+          "isCancelled": true
+        },
+        {
+          "date": "2026-09-17",
+          "classHour": {
+            "id": 9,
+            "number": "3"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 63,
+              "name": "R04"
+            },
+            "subject": {
+              "id": 57,
+              "abbreviation": "KU",
+              "name": "Kunst",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 58,
+                "abbreviation": "LK58",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 58"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 59,
+                "name": "KuG2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "KuG2",
+            "lessonId": 64,
+            "courseId": 61
+          }
+        },
+        {
+          "date": "2026-09-15",
+          "classHour": {
+            "id": 21,
+            "number": "5"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 65,
+              "name": "R12"
+            },
+            "subject": {
+              "id": 66,
+              "abbreviation": "PH",
+              "name": "Physik",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 67,
+                "abbreviation": "LK67",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 67"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 68,
+                "name": "PhG2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "PhG2",
+            "lessonId": 69,
+            "courseId": 70
+          }
+        },
+        {
+          "date": "2026-09-16",
+          "classHour": {
+            "id": 14,
+            "number": "1"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 65,
+              "name": "R12"
+            },
+            "subject": {
+              "id": 66,
+              "abbreviation": "PH",
+              "name": "Physik",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 67,
+                "abbreviation": "LK67",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 67"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 68,
+                "name": "PhG2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "PhG2",
+            "lessonId": 71,
+            "courseId": 70
+          }
+        },
+        {
+          "date": "2026-09-16",
+          "classHour": {
+            "id": 23,
+            "number": "2"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 65,
+              "name": "R12"
+            },
+            "subject": {
+              "id": 66,
+              "abbreviation": "PH",
+              "name": "Physik",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 67,
+                "abbreviation": "LK67",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 67"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 68,
+                "name": "PhG2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "PhG2",
+            "lessonId": 72,
+            "courseId": 70
+          }
+        },
+        {
+          "date": "2026-09-17",
+          "classHour": {
+            "id": 14,
+            "number": "1"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 73,
+              "name": "R01"
+            },
+            "subject": {
+              "id": 74,
+              "abbreviation": "SP",
+              "name": "Sport",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 75,
+                "abbreviation": "LK75",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 75"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 76,
+                "name": "SPL2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "SPL2",
+            "lessonId": 77,
+            "courseId": 78
+          }
+        },
+        {
+          "date": "2026-09-18",
+          "classHour": {
+            "id": 14,
+            "number": "1"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 79,
+              "name": "R13"
+            },
+            "subject": {
+              "id": 74,
+              "abbreviation": "SP",
+              "name": "Sport",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 75,
+                "abbreviation": "LK75",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 75"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 76,
+                "name": "SPL2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "SPL2",
+            "lessonId": 80,
+            "courseId": 78
+          }
+        },
+        {
+          "date": "2026-09-14",
+          "classHour": {
+            "id": 23,
+            "number": "2"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 79,
+              "name": "R13"
+            },
+            "subject": {
+              "id": 74,
+              "abbreviation": "SP",
+              "name": "Sport",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 75,
+                "abbreviation": "LK75",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 75"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 76,
+                "name": "SPL2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "SPL2",
+            "lessonId": 81,
+            "courseId": 78
+          }
+        },
+        {
+          "date": "2026-09-17",
+          "classHour": {
+            "id": 23,
+            "number": "2"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 73,
+              "name": "R01"
+            },
+            "subject": {
+              "id": 74,
+              "abbreviation": "SP",
+              "name": "Sport",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 75,
+                "abbreviation": "LK75",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 75"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 76,
+                "name": "SPL2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "SPL2",
+            "lessonId": 82,
+            "courseId": 78
+          }
+        },
+        {
+          "date": "2026-09-18",
+          "classHour": {
+            "id": 23,
+            "number": "2"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 79,
+              "name": "R13"
+            },
+            "subject": {
+              "id": 74,
+              "abbreviation": "SP",
+              "name": "Sport",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 75,
+                "abbreviation": "LK75",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 75"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 76,
+                "name": "SPL2_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "SPL2",
+            "lessonId": 83,
+            "courseId": 78
+          }
+        },
+        {
+          "date": "2026-09-17",
+          "classHour": {
+            "id": 84,
+            "number": "9"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 85,
+              "name": "R02"
+            },
+            "subject": {
+              "id": 86,
+              "abbreviation": "SwZ6",
+              "name": null,
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 87,
+                "abbreviation": "LK87",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 87"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 88,
+                "name": "SwZ6_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "SwZ6",
+            "lessonId": 89,
+            "courseId": 90
+          }
+        },
+        {
+          "date": "2026-09-17",
+          "classHour": {
+            "id": 91,
+            "number": "8"
+          },
+          "type": "regularLesson",
+          "actualLesson": {
+            "room": {
+              "id": 85,
+              "name": "R02"
+            },
+            "subject": {
+              "id": 86,
+              "abbreviation": "SwZ6",
+              "name": null,
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 87,
+                "abbreviation": "LK87",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 87"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 88,
+                "name": "SwZ6_13",
+                "classId": null
+              }
+            ],
+            "subjectLabel": "SwZ6",
+            "lessonId": 92,
+            "courseId": 90
+          }
+        },
+        {
+          "date": "2026-09-16",
+          "comment": "Examen",
+          "classHour": {
+            "id": 1,
+            "number": "4"
+          },
+          "type": "specialLesson",
+          "actualLesson": {
+            "room": {
+              "id": 93,
+              "name": "R03"
+            },
+            "subject": {
+              "id": 94,
+              "abbreviation": "BI",
+              "name": "Biologie",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 95,
+                "abbreviation": "LK95",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 95"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 96,
+                "name": "Q2",
+                "classId": 5
+              }
+            ],
+            "comment": "Examen",
+            "subjectLabel": "BI",
+            "substitutionId": 97
+          },
+          "isSubstitution": false,
+          "isNew": true
+        },
+        {
+          "date": "2026-09-14",
+          "comment": "Examen",
+          "classHour": {
+            "id": 23,
+            "number": "2"
+          },
+          "type": "specialLesson",
+          "actualLesson": {
+            "room": {
+              "id": 98,
+              "name": "R06"
+            },
+            "subject": {
+              "id": 99,
+              "abbreviation": "PsG3",
+              "name": null,
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 100,
+                "abbreviation": "LK100",
+                "firstname": "Vorname",
+                "lastname": "Lehrkraft 100"
+              }
+            ],
+            "classes": [
+              {
+                "id": 5,
+                "name": "Q2"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 96,
+                "name": "Q2",
+                "classId": 5
+              }
+            ],
+            "comment": "Examen",
+            "subjectLabel": "PsG3",
+            "substitutionId": 101
+          },
+          "isSubstitution": false,
+          "isNew": true
+        }
+      ]
+    }
+  ],
+  "systemStatusMessages": []
+}

@@ -35,7 +35,7 @@ test("pruefeBestand: v3-Felder werden bereinigt, Lehrkraft im Stundenplan fliegt
       "2026-09-14": [{ stunde: 1, fach: "M LK", lehrer: "Name", raum: "A12", status: "entfall" }, { stunde: "2", fach: "E", status: "egal" }, { fach: "" }, null],
       "kein-datum": [], "2026-09-15": "text",
     } },
-    kurszuordnung: { "M LK": { kurs: "Mathematik", quelle: "manuell", bestaetigt: true }, "E": { kurs: "" }, "D": { kurs: "Deutsch" } },
+    kurszuordnung: { "M LK": { kurs: "Mathematik", quelle: "manuell", bestaetigt: true }, "E": { kurs: "" }, "D": { kurs: "Deutsch" }, "PH": { kurs: null, quelle: "auto" }, "X": { kurs: 5 } },
     sync: { letzterErfolg: "2026-09-10T06:00:00.000Z", letzterFehler: { zeit: "2026-09-11T06:00:00.000Z", art: 5 }, quelle: "fremd" },
     einstellungen: { wochenplan: { fensterTage: 0, overrides: { Mo: { A: "fix", B: "weg" }, Xx: { A: "aus" } } },
       freieTage: ["2026-10-12..2026-10-24", "kaputt", { von: "2026-11-02", bis: "2026-11-02" }, "2026-10-12..2026-10-24"],
@@ -46,7 +46,11 @@ test("pruefeBestand: v3-Felder werden bereinigt, Lehrkraft im Stundenplan fliegt
     { stunde: 0, fach: "E", raum: "", status: "normal" },
   ] });
   assert.deepEqual(b.stundenplan.fenster, { von: "2026-09-14", bis: "2026-09-18" });
-  assert.deepEqual(b.kurszuordnung, { "M LK": { kurs: "Mathematik", quelle: "manuell", bestaetigt: true }, "D": { kurs: "Deutsch", quelle: "auto", bestaetigt: false } });
+  assert.deepEqual(b.kurszuordnung, {
+    "M LK": { kurs: "Mathematik", quelle: "manuell", bestaetigt: true },
+    "D": { kurs: "Deutsch", quelle: "auto", bestaetigt: false },
+    "PH": { kurs: null, quelle: "manuell", bestaetigt: true },       // „nicht anzeigen“ ist immer eine bewusste Entscheidung
+  });
   assert.deepEqual(b.sync, { letzterLauf: null, letzterErfolg: "2026-09-10T06:00:00.000Z", letzterFehler: { zeit: "2026-09-11T06:00:00.000Z", art: "unbekannt", text: "" }, quelle: null });
   assert.deepEqual(b.einstellungen.wochenplan, { fensterTage: 56, overrides: { Mo: { A: "fix" } } });
   assert.deepEqual(b.einstellungen.freieTage, ["2026-10-12..2026-10-24", "2026-11-02"]);

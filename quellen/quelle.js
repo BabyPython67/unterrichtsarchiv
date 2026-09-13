@@ -18,12 +18,13 @@
 //   typ: "unterrichtsarchiv:rohdaten",
 //   version: 1,
 //   abgerufen: "<ISO-Zeitstempel>",
-//   endpoints: ["get-topics", "get-homework"],   // Reihenfolge wie in results[]
+//   endpoints: ["get-topics", "get-homework", "get-actual-lessons"],   // Reihenfolge wie in results[]
+//   fenster: { von: "YYYY-MM-DD", bis: "YYYY-MM-DD" },                // angefragter Stundenplan-Zeitraum
 //   roh: <Antwort von /api/calls, unverändert>
 // }
 
 export const SCHULMANAGER_ORIGIN = "https://login.schulmanager-online.de";
-export const ENDPOINTS = ["get-topics", "get-homework"];
+export const ENDPOINTS = ["get-topics", "get-homework", "get-actual-lessons"];
 
 /** Nachrichtentypen zwischen Bookmarklet und Viewer. */
 export const NACHRICHT = {

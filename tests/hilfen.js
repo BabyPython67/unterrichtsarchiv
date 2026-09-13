@@ -6,10 +6,16 @@ export function fixture(name) {
 
 export const inhalte = () => fixture("antwort-inhalte.json");
 export const hausaufgaben = () => fixture("antwort-hausaufgaben.json");
+export const stundenplan = () => fixture("antwort-stundenplan.json");
 
-/** Eine Antwort, wie sie ein kombinierter Request mit zwei Teilanfragen liefert. */
+/** Eine Antwort, wie sie ein kombinierter Request mit zwei Teilanfragen liefert (Klassenbuch). */
 export function kombiniert() {
   return { results: [inhalte().results[0], hausaufgaben().results[0]], systemStatusMessages: [] };
+}
+
+/** Wie kombiniert(), plus Stundenplan als dritte Teilantwort (so sendet das Lesezeichen seit v3). */
+export function kombiniert3() {
+  return { results: [inhalte().results[0], hausaufgaben().results[0], stundenplan().results[0]], systemStatusMessages: [] };
 }
 
 export function speicherStub() {

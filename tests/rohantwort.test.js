@@ -2,12 +2,19 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { pruefeTeilantworten, zeilenAusRohantwort, entpacken, istRohdatenHuelle, HUELLE_TYP } from "../kern/rohantwort.js";
 import { importieren } from "../kern/importieren.js";
-import { leererBestand } from "../kern/speicher.js";
-import { inhalte, hausaufgaben, kombiniert } from "./hilfen.js";
+import { leererBestand, pruefeBestand } from "../kern/speicher.js";
+import { leererStundenplan } from "../kern/logik.js";
+import { inhalte, hausaufgaben, kombiniert, kombiniert3, stundenplan } from "./hilfen.js";
 
 const huelle = (roh, extra = {}) => ({
   typ: HUELLE_TYP, version: 1, abgerufen: "2026-09-10T18:04:00.000Z",
   endpoints: ["get-topics", "get-homework"], roh, ...extra,
+});
+
+/** Hülle, wie das Lesezeichen sie seit v3 schickt: drei Teilanfragen und das angefragte Fenster. */
+const huelle3 = (roh, extra = {}) => huelle(roh, {
+  endpoints: ["get-topics", "get-homework", "get-actual-lessons"],
+  fenster: { von: "2026-09-07", bis: "2026-09-20" }, ...extra,
 });
 
 test("pruefeTeilantworten: Status ungleich 200 wird mit Endpoint-Name gemeldet", () => {
@@ -78,6 +85,52 @@ test("importieren: Export-Datei -> Einträge gemergt, lokaler Alias gewinnt, fre
   assert.deepEqual(r.bestand.kursAlias, { PsG1: "Psycho", SwZ6: "Sowi" });
   assert.deepEqual(r.bestand.klausurschnitt, { Mathematik: "2026-09-07" });
   assert.equal(r.bestand.letzterAbruf, "2026-09-10T18:04:00.000Z");
+});
+
+test("importieren: Hülle mit Stundenplan -> Einträge, Cache im angefragten Fenster, Kurse automatisch zugeordnet", () => {
+  const r = importieren(leererBestand(), huelle3(kombiniert3()), "2026-09-10", "x");
+  assert.equal(r.ergebnis.neu, 27);
+  assert.equal(r.warnungen.length, 0);
+  assert.deepEqual(r.stundenplan, { von: "2026-09-07", bis: "2026-09-20", tage: 5 });
+  assert.deepEqual(r.bestand.stundenplan.fenster, { von: "2026-09-07", bis: "2026-09-20" });
+  assert.equal(r.bestand.stundenplan.abgerufenAm, "2026-09-10T18:04:00.000Z");
+  assert.deepEqual(r.berichte.map((b) => b.art), ["Inhalte", "Hausaufgaben", "stundenplan"]);
+  assert.equal(r.berichte[2].text, "Stundenplan 2026-09-07 bis 2026-09-20: 5 Tage");
+  const zu = r.bestand.kurszuordnung;
+  assert.equal(zu.Mathematik.kurs, "Mathematik");
+  assert.deepEqual(zu.PsG1, { kurs: "PsG1", quelle: "auto", bestaetigt: false });
+  assert.equal(zu.Biologie, undefined);                       // kein Kurs dieses Namens im Archiv
+  assert.deepEqual(pruefeBestand(JSON.parse(JSON.stringify(r.bestand))).kurszuordnung, zu);
+});
+
+test("importieren: Stundenplan-Teil fehlgeschlagen -> Warnung, Einträge kommen trotzdem, Cache bleibt leer", () => {
+  const roh = { results: [inhalte().results[0], hausaufgaben().results[0], { status: 404, data: null }] };
+  const r = importieren(leererBestand(), huelle3(roh), "2026-09-10", "x");
+  assert.equal(r.ergebnis.neu, 27);
+  assert.equal(r.warnungen.length, 1);
+  assert.match(r.warnungen[0].text, /get-actual-lessons/);
+  assert.equal(r.stundenplan, null);
+  assert.deepEqual(r.bestand.stundenplan, leererStundenplan());
+});
+
+test("importieren: nackte Antwort mit Stundenplan wird am Inhalt erkannt; nur Stundenplan wirft nicht", () => {
+  const r = importieren(leererBestand(), kombiniert3(), "2026-09-12", "2026-09-12T08:00:00.000Z");
+  assert.equal(r.ergebnis.neu, 27);
+  assert.deepEqual(r.stundenplan, { von: "2026-09-14", bis: "2026-09-18", tage: 5 });   // Fenster aus den Daten
+  const nurPlan = huelle({ results: [stundenplan().results[0]] }, { endpoints: ["get-actual-lessons"] });
+  const r2 = importieren(leererBestand(), nurPlan, "2026-09-12", "x");
+  assert.equal(r2.ergebnis.neu, 0);
+  assert.equal(r2.stundenplan.tage, 5);
+});
+
+test("importieren: Stundenplan leer geliefert -> Cache bleibt, Bericht sagt es", () => {
+  const voll = importieren(leererBestand(), huelle3(kombiniert3()), "2026-09-10", "x").bestand;
+  const roh = { results: [inhalte().results[0], hausaufgaben().results[0], { status: 200, data: [] }] };
+  const r = importieren(voll, huelle3(roh, { fenster: { von: "2026-10-05", bis: "2026-10-18" } }), "2026-09-11", "x");
+  assert.equal(r.ergebnis.unveraendert, 27);
+  assert.equal(r.stundenplan, null);
+  assert.equal(Object.keys(r.bestand.stundenplan.tage).length, 5);
+  assert.match(r.berichte[2].text, /nichts im Zeitraum/);
 });
 
 test("importieren: falsche Schema-Version und Müll werden abgewiesen", () => {

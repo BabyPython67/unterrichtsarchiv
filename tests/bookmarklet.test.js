@@ -1,10 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
-import { findeAssociatedStudents, findeBundleVersion, siehtNachJwtAus, findeJwt, dateinameFuerDatum, pruefeAntwortStatus, zaehleDatensaetze, jwtNutzlast, schuelerAusSpeicher, apiPfade, feldnamen, sitzungsFelder } from "../bookmarklet/helfer.js";
+import { findeAssociatedStudents, findeBundleVersion, siehtNachJwtAus, findeJwt, dateinameFuerDatum, pruefeAntwortStatus, zaehleDatensaetze, datensaetzeJeTeil, stundenplanFenster, anfragenBauen, jwtNutzlast, schuelerAusSpeicher, apiPfade, feldnamen, sitzungsFelder } from "../bookmarklet/helfer.js";
 import { bookmarkletBauen, bookmarkletModul, codeVerdichten, STANDARD, WURZEL } from "../tools/build.mjs";
 import { originErlaubt, bereitZiele } from "../quellen/empfangsQuelle.js";
-import { kombiniert } from "./hilfen.js";
+import { STUNDENPLAN_ENDPOINT, STUNDENPLAN_MODUL } from "../kern/stundenplan.js";
+import { ENDPOINTS } from "../quellen/quelle.js";
+import { kombiniert, kombiniert3 } from "./hilfen.js";
 
 test("findeAssociatedStudents: verschachtelt, mehrere, keine Dubletten, Name nur zur Auswahl", () => {
   const status = {
@@ -46,6 +48,25 @@ test("dateinameFuerDatum, pruefeAntwortStatus, zaehleDatensaetze", () => {
   assert.deepEqual(pruefeAntwortStatus(kombiniert(), ["a", "b"]), []);
   assert.deepEqual(pruefeAntwortStatus(null, []), []);
   assert.equal(zaehleDatensaetze(kombiniert()), 31);
+  assert.equal(zaehleDatensaetze(kombiniert3()), 65);
+  assert.equal(datensaetzeJeTeil(kombiniert3(), ENDPOINTS), "get-topics 27, get-homework 4, get-actual-lessons 34");
+  assert.equal(datensaetzeJeTeil({ results: [{ status: 404 }] }, []), "Teilanfrage 1 0");
+});
+
+test("stundenplanFenster: Montag der laufenden Woche bis Sonntag der Folgewoche, Ortszeit", () => {
+  assert.deepEqual(stundenplanFenster(new Date(2026, 8, 12, 9, 0)), { von: "2026-09-07", bis: "2026-09-20" });    // Samstag
+  assert.deepEqual(stundenplanFenster(new Date(2026, 8, 13, 23, 59)), { von: "2026-09-07", bis: "2026-09-20" });  // Sonntag spät
+  assert.deepEqual(stundenplanFenster(new Date(2026, 8, 14, 0, 5)), { von: "2026-09-14", bis: "2026-09-27" });    // Montag früh
+  assert.deepEqual(stundenplanFenster(new Date(2026, 11, 30)), { von: "2026-12-28", bis: "2027-01-10" });         // Jahreswechsel
+});
+
+test("anfragenBauen: Klassenbuch nur mit Schüler-ID, Stundenplan zusätzlich mit start/end; Konstanten wie im Kern", () => {
+  assert.deepEqual([STUNDENPLAN_MODUL, STUNDENPLAN_ENDPOINT], ["schedules", "get-actual-lessons"]);
+  assert.deepEqual(ENDPOINTS, ["get-topics", "get-homework", "get-actual-lessons"]);
+  const anfragen = anfragenBauen(ENDPOINTS, 0, { von: "2026-09-07", bis: "2026-09-20" });
+  const beispiel = JSON.parse(readFileSync(new URL("../referenz/anfrage-beispiel.json", import.meta.url), "utf8"));
+  assert.deepEqual(anfragen, beispiel.requests);
+  assert.deepEqual(anfragenBauen(["get-topics"], 7, { von: "x", bis: "y" }), [{ moduleName: "classbook", endpointName: "get-topics", parameters: { student: { id: 7 } } }]);
 });
 
 test("codeVerdichten: Kommentarzeilen und Einrückung weg, Code bleibt", () => {
@@ -61,6 +82,7 @@ test("bookmarkletBauen: Platzhalter ersetzt, Helfer ohne export, javascript:-URL
   assert.notEqual(bookmarkletBauen({ src: "void 0;" }).build, build);
   assert.ok(!code.includes("__VIEWER_URL__") && !code.includes("__SCHULMANAGER_ORIGIN__"));
   assert.ok(code.includes(`"${STANDARD.viewer}"`) && code.includes(`"${STANDARD.origin}"`));
+  assert.ok(code.includes('"get-actual-lessons"') && code.includes('"schedules"'), "Stundenplan-Anfrage muss im Lesezeichen stehen");
   assert.ok(!/^export /m.test(code));
   assert.ok(!/^\/\//m.test(code));
   assert.doesNotThrow(() => new Function(code), "gebauter Code muss syntaktisch gültig sein");

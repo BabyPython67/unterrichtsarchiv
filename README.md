@@ -43,18 +43,19 @@ Einstellungen lässt sich die Vorschau als Startansicht wählen.
 
 Woher die Vorschau weiß, welche Kurse an einem Tag sind, steht in der Zeile unter dem Datum:
 
-1. **Gemessen**: der Stundenplan aus Schulmanager, sobald das Lesezeichen ihn abruft. Noch nicht
-   umgesetzt, der Endpunkt muss erst mitgeschnitten werden; Speicher, Logik und Anzeige sind
-   vorbereitet. Entfallene Stunden stehen durchgestrichen, Vertretungen sind markiert. Fächer
-   aus dem Stundenplan werden den Kursen im Archiv zugeordnet; passt nichts automatisch, fragt
-   die Karte nach.
+1. **Gemessen**: der Stundenplan aus Schulmanager. Das Lesezeichen holt ihn im selben Abruf mit
+   (`schedules/get-actual-lessons`, Montag der laufenden Woche bis Sonntag der Folgewoche). Die
+   Kurse stehen in der Reihenfolge des Tages, entfallene Stunden durchgestrichen, Vertretungen
+   markiert. Fächer aus dem Stundenplan werden den Kursen im Archiv zugeordnet: gleiche Namen
+   automatisch, sonst fragt die Karte nach. „Nicht anzeigen“ blendet ein Fach in der Vorschau
+   aus (Einstellungen → Fächer im Stundenplan).
 2. **Abgeleitet**: aus den Einträgen der letzten 56 Tage, also welcher Kurs an welchem Wochentag
    regelmäßig Einträge hatte. Unsichere Treffer sind markiert.
 3. **Manuell**: in den Einstellungen lässt sich je Wochentag ein Kurs fest setzen oder
    ausschließen. Das gewinnt gegen die Ableitung.
 
 Die Vorschau warnt, wenn der letzte Abruf älter als drei Tage ist. Sie zeigt weder Stundennummer
-noch Uhrzeit, weil Schulmanager beides für die Inhalte nicht liefert.
+noch Uhrzeit; die Nummer aus dem Stundenplan bestimmt nur die Reihenfolge.
 
 ## Aufbau
 
@@ -112,8 +113,11 @@ und wird nirgends angezeigt. Kursnamen werden roh gespeichert, ein Alias wirkt n
 
 Zwei Arten von Daten, zwei Regeln: `eintraege` ist das Archiv und schrumpft nie. `stundenplan`
 ist ein Cache; ein neuer Abruf ersetzt die Tage im abgerufenen Fenster vollständig, damit
-entfallene Stunden auch wieder verschwinden. Der Cache enthält keine Lehrkraft; `stunde` dient
-nur der Reihenfolge und wird nicht angezeigt.
+entfallene Stunden auch wieder verschwinden. Der Cache enthält weder Lehrkraft noch IDs noch
+Kommentare, nur Stunde, Fach, Raum, Status; `stunde` dient nur der Reihenfolge und wird nicht
+angezeigt. Als Fach gilt der Name aus dem Stundenplan (`subject.name`, sonst das Kurskürzel);
+der ist mit dem Kursnamen aus dem Klassenbuch identisch, deshalb passt die Zuordnung meist von
+selbst. `kurs: null` in `kurszuordnung` heißt „nicht anzeigen“.
 
 Der Export enthält Archiv, Alias, Klausurschnitte und Einstellungen, aber weder den
 Stundenplan-Cache noch den Sync-Status. Beim Import einer Export-Datei gewinnen bei den
@@ -153,8 +157,11 @@ Weiter offen:
 - Schlägt die Schüler-Zuordnung fehl, zeigt die Statusbox eine Diagnose: Storage-Schlüsselnamen,
   Feldnamen der Sitzungsdaten (nie Werte), ob ein Token da ist und welche API-Pfade die Seite
   selbst aufruft.
-- Der Stundenplan-Endpunkt ist nicht mitgeschnitten. Bis dahin arbeitet die Vorschau nur
-  abgeleitet und manuell.
+- Der Stundenplan-Abruf ist aus einer mitgeschnittenen Antwort abgeleitet
+  (`referenz/antwort-stundenplan.json`, anonymisiert). Die Form der Anfrage
+  (`schedules/get-actual-lessons` mit `student`, `start`, `end`) ist noch nicht im echten
+  Schulmanager bestätigt. Antwortet die Teilanfrage nicht mit 200, meldet der Viewer es und
+  arbeitet ohne Stundenplan weiter.
 
 ## Rahmen
 

@@ -111,6 +111,36 @@ export function zaehleDatensaetze(roh) {
   return results.reduce((s, r) => s + (r && Array.isArray(r.data) ? r.data.length : 0), 0);
 }
 
+/** Datensätze je Teilantwort als Text, z. B. "get-topics 27, get-homework 4, get-actual-lessons 34". */
+export function datensaetzeJeTeil(roh, endpoints) {
+  const results = roh && Array.isArray(roh.results) ? roh.results : [];
+  return results.map((r, i) => (endpoints[i] || "Teilanfrage " + (i + 1)) + " " + (r && Array.isArray(r.data) ? r.data.length : 0)).join(", ");
+}
+
+// Stundenplan: Modul und Endpunkt wie in kern/stundenplan.js (hier doppelt, weil diese Datei
+// ohne Imports ins Lesezeichen wandert; tests/bookmarklet.test.js prüft, dass beide gleich sind).
+const STUNDENPLAN_ENDPOINT = "get-actual-lessons";
+const STUNDENPLAN_MODUL = "schedules";
+
+/** Zeitraum für den Stundenplan: Montag der laufenden Woche bis Sonntag der Folgewoche, Ortszeit. */
+export function stundenplanFenster(jetzt) {
+  const p = (n) => String(n).padStart(2, "0");
+  const iso = (d) => d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  const montag = new Date(jetzt.getFullYear(), jetzt.getMonth(), jetzt.getDate() - ((jetzt.getDay() + 6) % 7));
+  const sonntag = new Date(montag.getFullYear(), montag.getMonth(), montag.getDate() + 13);
+  return { von: iso(montag), bis: iso(sonntag) };
+}
+
+/** Die Teilanfragen für /api/calls in der Reihenfolge von endpoints; Klassenbuch braucht nur die Schüler-ID, der Stundenplan zusätzlich das Fenster. */
+export function anfragenBauen(endpoints, studentId, fenster) {
+  return endpoints.map((e) => {
+    const plan = e === STUNDENPLAN_ENDPOINT;
+    const parameters = { student: { id: studentId } };
+    if (plan) { parameters.start = fenster.von; parameters.end = fenster.bis; }
+    return { moduleName: plan ? STUNDENPLAN_MODUL : "classbook", endpointName: e, parameters: parameters };
+  });
+}
+
 /** Nutzlast (mittlerer Teil) eines JWT als Objekt, sonst null. Kein Signaturcheck, nur lesen. */
 export function jwtNutzlast(token) {
   if (!siehtNachJwtAus(token)) return null;

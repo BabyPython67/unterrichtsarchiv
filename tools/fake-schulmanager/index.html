@@ -20,6 +20,7 @@
 
   <label><input type="checkbox" id="popup-blocken"> window.open blockieren (Download-Fallback testen)</label>
   <label><input type="checkbox" id="topics-kaputt"> get-topics mit Status 404 beantworten (Warnung testen)</label>
+  <label><input type="checkbox" id="plan-kaputt"> get-actual-lessons mit Status 404 beantworten (Import ohne Stundenplan testen)</label>
   <label><input type="checkbox" id="rate-limit"> HTTP 429 liefern</label>
   <label><input type="checkbox" id="zwei-schueler"> zwei zugeordnete Schüler (Auswahl-Prompt testen)</label>
   <label><input type="checkbox" id="status-kaputt"> login-status auch per POST mit 404 beantworten (Diagnose testen)</label>
@@ -59,13 +60,40 @@
       if (u.includes("/api/calls")) {
         protokoll(`POST ${u} (${bearer})\nBody: ${init.body}`);
         if (document.getElementById("rate-limit").checked) return antwort({ error: "rate limit" }, 429);
-        const inhalte = await (await echt("http://localhost:8080/referenz/antwort-inhalte.json")).json();
-        const ha = await (await echt("http://localhost:8080/referenz/antwort-hausaufgaben.json")).json();
-        const topics = document.getElementById("topics-kaputt").checked ? { status: 404, data: null } : inhalte.results[0];
-        return antwort({ results: [topics, ha.results[0]], systemStatusMessages: [] }, 200, { "X-Ratelimit-Limit": "800" });
+        const lade = async (name) => (await (await echt("http://localhost:8080/referenz/" + name)).json()).results[0];
+        const [inhalte, ha, plan] = await Promise.all(["antwort-inhalte.json", "antwort-hausaufgaben.json", "antwort-stundenplan.json"].map(lade));
+        let requests = [];
+        try { requests = JSON.parse(init.body).requests || []; } catch (e) { /* kein JSON */ }
+        // Antworten in der Reihenfolge der Teilanfragen, wie der echte Server.
+        const results = requests.map((r) => {
+          if (r.endpointName === "get-topics") return document.getElementById("topics-kaputt").checked ? { status: 404, data: null } : inhalte;
+          if (r.endpointName === "get-homework") return ha;
+          if (r.endpointName === "get-actual-lessons") {
+            if (document.getElementById("plan-kaputt").checked) return { status: 404, data: null };
+            return { status: 200, data: verschieben(plan.data, r.parameters.start, r.parameters.end) };
+          }
+          return { status: 404, data: null };
+        });
+        return antwort({ results, systemStatusMessages: [] }, 200, { "X-Ratelimit-Limit": "800" });
       }
       return echt(url, init);
     };
+
+    // Die Fixture-Woche (14.–18.09.2026) auf das angefragte Fenster legen: jede Stunde landet auf
+    // demselben Wochentag in beiden Wochen. start ist ein Montag (so baut es das Lesezeichen).
+    function verschieben(lektionen, start, end) {
+      const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      const tag = (basis, plus) => { const d = new Date(basis + "T12:00:00"); d.setDate(d.getDate() + plus); return iso(d); };
+      const aus = [];
+      for (const l of lektionen) {
+        const wd = (new Date(l.date + "T12:00:00").getDay() + 6) % 7;
+        for (const woche of [0, 7]) {
+          const date = tag(start, woche + wd);
+          if (date <= end) aus.push({ ...l, date });
+        }
+      }
+      return aus;
+    }
 
     window.addEventListener("message", (ev) => protokoll(`message von ${ev.origin}: ${JSON.stringify(ev.data).slice(0, 120)}`));
   </script>

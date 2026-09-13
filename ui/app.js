@@ -89,9 +89,10 @@ function datenVerarbeiten(objekt, meta = {}) {
   speichern();
   const { neu, geaendert, unveraendert } = r.ergebnis;
   const woher = meta.datei ? ` aus ${meta.datei}` : meta.quelle ? ` (${meta.quelle})` : "";
+  const plan = r.stundenplan ? ` Stundenplan bis ${datumLesbar(r.stundenplan.bis)} aktualisiert.` : "";
   const text = r.art === "export"
     ? `Export-Datei übernommen${woher}: ${neu} neu, ${geaendert} geändert, ${unveraendert} unverändert.`
-    : `Abruf übernommen${woher}: ${neu} neu, ${geaendert} geändert, ${unveraendert} unverändert.`;
+    : `Abruf übernommen${woher}: ${neu} neu, ${geaendert} geändert, ${unveraendert} unverändert.${plan}`;
   melden(r.warnungen.length ? "warn" : "ok", text, r.warnungen.map((w) => w.text));
   render();
   return r.ergebnis;
@@ -369,23 +370,37 @@ function kursKarte(k) {
   return karte;
 }
 
+/**
+ * Auswahlfeld „Kurs im Archiv“ für ein Fach aus dem Stundenplan. Eine Stelle für Vorschau-Karte
+ * und Einstellungen, damit beide dasselbe tun: Kurs setzen, „Nicht anzeigen“ (kurs: null) oder
+ * Zuordnung löschen. Jede Wahl hier gilt als manuell und bestätigt.
+ */
+function zuordnungAuswahl(fach, nachher) {
+  const { bestand } = zustand;
+  const zu = bestand.kurszuordnung[fach] || null;
+  const kurse = kurseSortiert(Object.keys(kurseZaehlen(bestand.eintraege)), bestand.kursAlias);
+  if (zu && zu.kurs && !kurse.includes(zu.kurs)) kurse.push(zu.kurs);   // zugeordnet, aber (noch) ohne Eintrag
+  const auswahl = el("select", { "aria-label": `Kurs im Archiv für ${fach}` },
+    el("option", { value: "", text: "Kurs im Archiv wählen" }),
+    kurse.map((kurs) => el("option", { value: "k:" + kurs, text: anzeigename(kurs, bestand.kursAlias) })),
+    el("option", { value: "aus", text: "Nicht anzeigen" }));
+  auswahl.value = zu ? (zu.kurs === null ? "aus" : "k:" + zu.kurs) : "";
+  auswahl.addEventListener("change", () => {
+    const v = auswahl.value;
+    if (v === "aus") bestand.kurszuordnung[fach] = { kurs: null, quelle: "manuell", bestaetigt: true };
+    else if (v.startsWith("k:")) bestand.kurszuordnung[fach] = { kurs: v.slice(2), quelle: "manuell", bestaetigt: true };
+    else delete bestand.kurszuordnung[fach];
+    speichern();
+    nachher();
+  });
+  return auswahl;
+}
+
 /** Fach aus dem Stundenplan, das noch keinem Archiv-Kurs zugeordnet ist. */
 function zuordnungKarte(k) {
-  const { bestand } = zustand;
-  const kurse = kurseSortiert(Object.keys(kurseZaehlen(bestand.eintraege)), bestand.kursAlias);
-  const auswahl = el("select", { "aria-label": `Archiv-Kurs für ${k.fach}` },
-    el("option", { value: "", text: "Kurs wählen" }),
-    kurse.map((kurs) => el("option", { value: kurs, text: anzeigename(kurs, bestand.kursAlias) })));
-  auswahl.addEventListener("change", () => {
-    if (!auswahl.value) return;
-    bestand.kurszuordnung[k.fach] = { kurs: auswahl.value, quelle: "manuell", bestaetigt: true };
-    speichern();
-    renderVorschau();
-  });
   return el("article", { class: "karte" },
     el("div", { class: "karte-kopf" }, el("h3", { text: k.name }), el("span", { class: "marke leise", text: "nicht zugeordnet" })),
-    el("p", { class: "karte-meta", text: "Steht im Stundenplan, gehört aber noch zu keinem Kurs im Archiv." }),
-    el("div", { class: "zeile-eingabe" }, auswahl),
+    el("div", { class: "zeile-eingabe" }, zuordnungAuswahl(k.fach, renderVorschau)),
   );
 }
 
@@ -461,6 +476,26 @@ function renderEinstellungenVorschau(box, kurse) {
   });
   box.append(el("p", { text: "Bis zu dieser Uhrzeit zeigt die Vorschau den heutigen Tag, danach den nächsten Schultag." }),
     el("div", { class: "zeile-eingabe" }, el("label", { class: "feld" }, "Unterrichtsbeginn", beginn)));
+
+  // Fächer aus dem Stundenplan-Cache plus alles, was schon eine Zuordnung hat (auch außerhalb des Fensters).
+  const faecher = [...new Set([
+    ...Object.values(bestand.stundenplan.tage).flat().map((s) => s.fach),
+    ...Object.keys(bestand.kurszuordnung),
+  ])].sort((a, b) => a.localeCompare(b, "de"));
+  if (faecher.length) {
+    box.append(el("h3", { text: "Fächer im Stundenplan" }));
+    box.append(el("p", { text: "Jedes Fach aus dem Stundenplan gehört zu einem Kurs im Archiv. „Nicht anzeigen“ blendet es in der Vorschau aus." }));
+    const tabelle = el("div", { class: "kurs-tabelle" });
+    for (const fach of faecher) {
+      const zu = bestand.kurszuordnung[fach];
+      const hinweis = !zu ? "noch nicht zugeordnet" : zu.quelle === "auto" && !zu.bestaetigt ? "automatisch zugeordnet" : null;
+      tabelle.append(el("div", { class: "kurs-zeile zwei" },
+        el("div", { class: "roh" }, fach, hinweis ? el("small", { text: hinweis }) : null),
+        el("label", {}, "Kurs im Archiv", zuordnungAuswahl(fach, renderEinstellungen)),
+      ));
+    }
+    box.append(tabelle);
+  }
 
   box.append(el("h3", { text: "Wochenplan" }));
   box.append(el("p", { text: `Abgeleitet aus den Einträgen der letzten ${einst.wochenplan.fensterTage} Tage. Antippen wechselt: automatisch → fest → aus.` }));

@@ -6,7 +6,7 @@ import { normalisieren, zusammenfuehren } from "./normalisieren.js";
 
 export const HUELLE_TYP = "unterrichtsarchiv:rohdaten";
 
-/** Hülle des Bookmarklets: { typ, version, abgerufen, endpoints, roh } */
+/** Hülle des Bookmarklets: { typ, version, abgerufen, endpoints, fenster?, roh } */
 export function istRohdatenHuelle(obj) {
   return !!obj && typeof obj === "object" && obj.typ === HUELLE_TYP && "roh" in obj;
 }

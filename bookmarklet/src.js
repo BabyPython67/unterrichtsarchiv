@@ -1,5 +1,5 @@
-// Bookmarklet: läuft im eingeloggten Schulmanager-Tab. Holt Unterrichtsinhalte und
-// Hausaufgaben mit EINEM Request (zwei Teilanfragen), übergibt sie per postMessage an den
+// Bookmarklet: läuft im eingeloggten Schulmanager-Tab. Holt Unterrichtsinhalte, Hausaufgaben
+// und den Stundenplan mit EINEM Request (drei Teilanfragen), übergibt sie per postMessage an den
 // Viewer und lädt sie sonst als Datei herunter. Platzhalter __VIEWER_URL__ und
 // __SCHULMANAGER_ORIGIN__ ersetzt tools/build.mjs; die Helfer aus helfer.js werden davor
 // eingefügt. Regeln: kein Passwort, ein Abruf pro Klick, kein Retry, das Sitzungs-Token
@@ -13,7 +13,7 @@
   const VIEWER_ORIGIN = new URL(VIEWER_URL).origin;
   const BUILD = "__BUILD__";
   const BUNDLE_FALLBACK = "a6ef588fd2";
-  const ENDPOINTS = ["get-topics", "get-homework"];
+  const ENDPOINTS = ["get-topics", "get-homework", "get-actual-lessons"];
   const TYP = { bereit: "unterrichtsarchiv:bereit", rohdaten: "unterrichtsarchiv:rohdaten", fehler: "unterrichtsarchiv:fehler", empfangen: "unterrichtsarchiv:empfangen" };
   const WARTE_AUF_VIEWER_MS = 15000;
 
@@ -178,7 +178,8 @@
     log("Schüler-Zuordnung erkannt (Quelle: " + herkunft + ").");
     const bundle = await bundleVersionErmitteln();
     log("bundleVersion " + bundle.v + " (" + bundle.quelle + ").");
-    const body = { bundleVersion: bundle.v, requests: ENDPOINTS.map((e) => ({ moduleName: "classbook", endpointName: e, parameters: { student: { id: gewaehlt.id } } })) };
+    const fenster = stundenplanFenster(new Date());
+    const body = { bundleVersion: bundle.v, requests: anfragenBauen(ENDPOINTS, gewaehlt.id, fenster) };
     const res = await fetch("/api/calls", { method: "POST", credentials: "include", headers: kopf(), body: JSON.stringify(body) });
     if (res.status === 429) { fehler("Zu viele Anfragen (HTTP 429). Bitte später noch einmal, nicht sofort wieder klicken."); return; }
     if (res.status === 401 || res.status === 403) { diagnose(); fehler("Sitzung nicht erkannt (HTTP " + res.status + "). Neu einloggen und erneut versuchen."); return; }
@@ -192,8 +193,8 @@
     const warnungen = pruefeAntwortStatus(roh, ENDPOINTS);
     for (const w of warnungen) log("Warnung: " + w + ", der endpointName stimmt dort vermutlich nicht.");
     if (warnungen.length) kopieren.hidden = false;
-    log(zaehleDatensaetze(roh) + " Datensätze erhalten.");
-    const huelle = { typ: TYP.rohdaten, version: 1, abgerufen: new Date().toISOString(), endpoints: ENDPOINTS, roh: roh };
+    log(zaehleDatensaetze(roh) + " Datensätze erhalten (" + datensaetzeJeTeil(roh, ENDPOINTS) + ").");
+    const huelle = { typ: TYP.rohdaten, version: 1, abgerufen: new Date().toISOString(), endpoints: ENDPOINTS, fenster: fenster, roh: roh };
     if (viewer && !viewer.closed) {
       const ok = await Promise.race([bereit, warte(WARTE_AUF_VIEWER_MS)]);
       if (ok) {

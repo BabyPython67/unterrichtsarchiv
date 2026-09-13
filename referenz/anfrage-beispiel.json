@@ -18,6 +18,17 @@
           "id": 0
         }
       }
+    },
+    {
+      "moduleName": "schedules",
+      "endpointName": "get-actual-lessons",
+      "parameters": {
+        "student": {
+          "id": 0
+        },
+        "start": "2026-09-07",
+        "end": "2026-09-20"
+      }
     }
   ]
 }

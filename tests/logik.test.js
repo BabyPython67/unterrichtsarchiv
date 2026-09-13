@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   tagesplan, ermittleWochenplan, naechsterSchultag, schultagSuchen, letzteStunde, baueDigest,
-  digestKopfzeile, digestText, stundenplanUebernehmen, leererStundenplan, planFunktion,
+  digestKopfzeile, digestText, stundenplanUebernehmen, leererStundenplan, planFunktion, kurszuordnungErgaenzen,
   istFrei, istWochenende, datumPlus, tageZwischen, wochentagKuerzel, syncStatus, herkunftZeile, mitStandard,
 } from "../kern/logik.js";
 import { leererBestand, pruefeBestand, exportText } from "../kern/speicher.js";
@@ -93,6 +93,17 @@ test("tagesplan 3: entfall nicht in kurse, aber in entfallen; Vertretung bleibt 
   assert.deepEqual(p.entfallen.map((k) => k.kurs), ["Deutsch"]);
 });
 
+test("tagesplan: entfallende Doppelstunde steht nur einmal in entfallen, mit beiden Stunden", () => {
+  const plan = { fenster: { von: "2026-09-14", bis: "2026-09-14" }, tage: { "2026-09-14": [
+    { stunde: 5, fach: "Kunst", status: "entfall" }, { stunde: 3, fach: "M LK", status: "normal" }, { stunde: 6, fach: "Kunst", status: "entfall" },
+  ] } };
+  const p = tagesplan("2026-09-14", plan, wochenplanFixture(), {}, zuordnung);
+  assert.deepEqual(p.entfallen.map((k) => [k.fach, k.stunden]), [["Kunst", [5, 6]]]);
+  assert.deepEqual(p.kurse.map((k) => k.kurs), ["Mathematik"]);
+  const d = baueDigest(new Date(2026, 8, 13, 20, 0), { eintraege: [], stundenplan: plan, kurszuordnung: zuordnung, datum: "2026-09-14" });
+  assert.match(digestText(d), /^Entfällt: Kunst$/m);
+});
+
 test("tagesplan 4: Override aus schlägt einen gemessenen Kurs, fix ergänzt einen", () => {
   const einst = { wochenplan: { overrides: { Di: { Mathematik: "aus", Geschichte: "fix" } } } };
   const p = tagesplan("2026-09-15", stundenplanFixture(), wochenplanFixture(), einst, zuordnung);
@@ -107,6 +118,41 @@ test("tagesplan 5: Fach ohne Kurszuordnung erscheint mit Zuordnungsflag", () => 
   const ph = p.kurse.find((k) => k.fach === "PH");
   assert.deepEqual({ kurs: ph.kurs, zuordnungFehlt: ph.zuordnungFehlt }, { kurs: null, zuordnungFehlt: true });
   assert.equal(p.kurse[0].zuordnungFehlt, false);
+});
+
+test("tagesplan: Fach mit kurs null („nicht anzeigen“) fehlt in kurse und in entfallen", () => {
+  const zu = { ...zuordnung, PH: { kurs: null, quelle: "manuell", bestaetigt: true }, D: { kurs: null, quelle: "manuell", bestaetigt: true } };
+  const di = tagesplan("2026-09-15", stundenplanFixture(), wochenplanFixture(), {}, zu);
+  assert.deepEqual(di.kurse.map((k) => k.fach), ["M LK", "E"]);
+  const mi = tagesplan("2026-09-16", stundenplanFixture(), wochenplanFixture(), {}, zu);
+  assert.deepEqual([mi.kurse.map((k) => k.fach), mi.entfallen], [["E"], []]);
+});
+
+test("kurszuordnungErgaenzen: gleichnamiger Archiv-Kurs wird automatisch verbunden, Vorhandenes bleibt, Eingabe unverändert", () => {
+  const eintraege = [e("Mathematik", "2026-09-01"), e("englisch", "2026-09-01"), e("Physik", "2026-09-01")];
+  const vorher = { "M LK": { kurs: "Mathematik", quelle: "manuell", bestaetigt: true }, E: { kurs: null, quelle: "manuell", bestaetigt: true } };
+  const plan = { tage: { "2026-09-14": [{ stunde: 1, fach: "Mathematik" }, { stunde: 2, fach: "ENGLISCH" }, { stunde: 3, fach: "PH" }, { stunde: 4, fach: "E" }], "2026-09-15": [{ stunde: 1, fach: "Mathematik" }] } };
+  const z = kurszuordnungErgaenzen(vorher, plan, eintraege);
+  assert.deepEqual(z, {
+    "M LK": vorher["M LK"], E: vorher.E,                                            // nie überschreiben, auch „nicht anzeigen“ nicht
+    Mathematik: { kurs: "Mathematik", quelle: "auto", bestaetigt: false },
+    ENGLISCH: { kurs: "englisch", quelle: "auto", bestaetigt: false },              // Groß/Klein egal, Original-Kursname bleibt
+  });
+  assert.deepEqual(Object.keys(vorher), ["M LK", "E"]);
+  assert.deepEqual(kurszuordnungErgaenzen(undefined, null, []), {});
+  assert.deepEqual(kurszuordnungErgaenzen({}, leererStundenplan(), eintraege), {});
+});
+
+test("baueDigest: gemessener Tag behält die Reihenfolge des Stundenplans, auch wenn nur ein späterer Kurs Hausaufgabe hat", () => {
+  const b = leererBestand();
+  b.eintraege = [e("Mathematik", "2026-09-08", "Ableitung"), e("Englisch", "2026-09-08", "Text", "Vokabeln lernen")];
+  b.stundenplan = stundenplanFixture();
+  b.kurszuordnung = zuordnung;
+  const d = baueDigest(new Date(2026, 8, 14, 20, 0), b);
+  assert.deepEqual([d.datum, d.herkunft], ["2026-09-15", "gemessen"]);
+  assert.deepEqual(d.kurse.map((k) => k.name), ["Mathematik", "Englisch", "PH"]);
+  assert.equal(d.anzahlHA, 1);
+  assert.equal(digestText(d).split("\n")[1], "Englisch: Vokabeln lernen");
 });
 
 test("tagesplan: Tag im Fenster ohne Stunden ist gemessen und leer (Ferien), nicht abgeleitet", () => {

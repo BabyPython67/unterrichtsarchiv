@@ -79,7 +79,10 @@ function pruefeKurszuordnung(o) {
   const z = {};
   if (!o || typeof o !== "object") return z;
   for (const [fach, v] of Object.entries(o)) {
-    if (!fach || !v || typeof v !== "object" || typeof v.kurs !== "string" || !v.kurs) continue;
+    if (!fach || !v || typeof v !== "object") continue;
+    // kurs: null heißt „nicht anzeigen“ — eine bewusste Entscheidung, deshalb immer manuell und bestätigt.
+    if (v.kurs === null) { z[fach] = { kurs: null, quelle: "manuell", bestaetigt: true }; continue; }
+    if (typeof v.kurs !== "string" || !v.kurs) continue;
     z[fach] = { kurs: v.kurs, quelle: v.quelle === "manuell" ? "manuell" : "auto", bestaetigt: v.bestaetigt === true };
   }
   return z;
