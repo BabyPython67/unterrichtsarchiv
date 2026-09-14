@@ -101,11 +101,12 @@ Zeile mit dem Stand, wie viele Schulstunden seitdem waren.
 Mit dem Abgleich zeigen zum Beispiel iPad und iPhone dasselbe: in der Schule am iPad eingetragen,
 zuhause am iPhone zu sehen. Abgeglichen werden Einträge, Stundenplan und Einstellungen.
 
-1. Auf dem Gerät, das schon Einträge und Einstellungen hat: Einstellungen → Abgleich → „Ablage
-   anlegen“.
-2. „Anderes Gerät koppeln“ antippen und den Link an das andere Gerät schicken, zum Beispiel per
-   AirDrop oder als Nachricht an sich selbst.
-3. Auf dem anderen Gerät den Link öffnen. Fertig.
+Der Abgleich ist vorerst privat und nur für meine eigenen Geräte freigeschaltet. Die Zeile
+„Abgleich“ erscheint deshalb nur auf Geräten, die schon gekoppelt sind. Ein weiteres Gerät dazunehmen:
+
+1. Auf einem gekoppelten Gerät: Einstellungen → Abgleich → „Anderes Gerät koppeln“ und den Link an
+   das neue Gerät schicken, zum Beispiel per AirDrop oder als Nachricht an sich selbst.
+2. Auf dem neuen Gerät den Link öffnen. Fertig.
 
 Danach geht alles von selbst: Was ein Gerät abruft, einträgt, ändert oder löscht, legt es in der
 Ablage ab. Das andere Gerät holt es, sobald die App geöffnet wird. Ohne Internet wird es nachgeholt.
@@ -113,8 +114,8 @@ Ablage ab. Das andere Gerät holt es, sobald die App geöffnet wird. Ohne Intern
 - Die Ablage liegt bei Google (Firebase, Rechenzentrum Frankfurt), aber verschlüsselt. Den
   Schlüssel haben nur die gekoppelten Geräte, er steckt im Link. Deshalb den Link nur an eigene
   Geräte schicken.
-- Beim ersten Koppeln gibt das Gerät, das die Ablage angelegt hat, Anzeigenamen, Klausurdaten und
-  Einstellungen vor. Einträge beider Geräte bleiben alle erhalten.
+- Anzeigenamen, Klausurdaten und Einstellungen kommen von dem Gerät, auf dem sie zuletzt geändert
+  wurden. Einträge beider Geräte bleiben alle erhalten.
 - „Abgleich auf diesem Gerät beenden“ trennt nur dieses Gerät. Seine Einträge bleiben.
 
 ## Daten
@@ -149,7 +150,7 @@ der Box, die nach dem Antippen im Schulmanager erscheint. Stimmen beide überein
 allen anderen Änderungen reicht es, die App neu zu laden.
 
 - **14.09.2026:** Abgleich zwischen Geräten: Einträge, Stundenplan und Einstellungen auf iPad und
-  iPhone gleich halten (Einstellungen → Abgleich).
+  iPhone gleich halten (Einstellungen → Abgleich). Vorerst nur auf meinen eigenen Geräten.
 - **13.09.2026:** Neuer Reiter „Eintragen“: Hausaufgaben, die nicht im Schulmanager stehen, selbst
   notieren und später ändern oder löschen. Vorschläge zeigen, welche Kurse des Tages noch keine
   Hausaufgabe haben.

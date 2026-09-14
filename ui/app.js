@@ -947,7 +947,7 @@ function seiteUebersicht(box) {
     zeile("Kurse", kurseZusammenfassung(bestand), () => seiteOeffnen(["kurse"])),
     zeile("Vorschau", vorschauZusammenfassung(einst), () => seiteOeffnen(["vorschau"])),
     zeile("Daten", datenZusammenfassung(bestand), () => seiteOeffnen(["daten"])),
-    abgleichMoeglich()
+    abgleichMoeglich() && (abgleich.status || abgleich.frei)
       ? zeile("Abgleich", abgleichZusammenfassung(abgleich.status, new Date()), () => seiteOeffnen(["abgleich"]),
         { klasse: abgleich.status && abgleich.status.fehler ? "warn" : "" })
       : null,
@@ -1118,7 +1118,9 @@ function seiteDaten(box) {
 const ABGLEICH_KEY = "unterrichtsarchiv:abgleich";
 const ABLAGE_FAST_VOLL = 700000;
 // status: { geheimnis, letzter, fehler: { art, text, zeit } | null, ausstehend, groesse } | null
-const abgleich = { status: null, schluessel: null, laeuft: false, nochmal: false, timer: null, gemeldet: null };
+// frei: Zeile „Abgleich“ auch ungekoppelt zeigen (nach Öffnen von ./#abgleich). Sonst sehen sie nur
+// gekoppelte Geräte, die Ablage ist vorerst privat.
+const abgleich = { status: null, schluessel: null, laeuft: false, nochmal: false, timer: null, gemeldet: null, frei: false };
 
 const abgleichMoeglich = () => !!storage && ablageEingerichtet() && !!(globalThis.crypto && crypto.subtle);
 const eintraegeText = (n) => `${n} ${n === 1 ? "Eintrag" : "Einträge"}`;
@@ -1207,6 +1209,12 @@ async function abgleichStarten({ vonHand = false, text = null } = {}) {
 
 /** Kopplungslink (#koppeln=…) geöffnet: dieses Gerät mit der Ablage verbinden. → true, wenn der Link da war */
 function kopplungAusLink() {
+  if (location.hash === "#abgleich") {   // Zugang zu „Ablage anlegen“ auf ungekoppelten Geräten
+    history.replaceState(null, "", location.pathname + location.search);
+    abgleich.frei = true;
+    ansichtWechseln("einstellungen", ["abgleich"]);
+    return false;
+  }
   const treffer = /^#koppeln=([A-Za-z0-9_-]{43})$/.exec(location.hash);
   if (!treffer) return false;
   history.replaceState(null, "", location.pathname + location.search);   // Geheimnis nicht in der Adresse lassen

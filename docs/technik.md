@@ -126,6 +126,11 @@ Optional, unter Einstellungen → Abgleich. Ein Gerät legt die Ablage an und sc
 Kopplungslink an die anderen Geräte (`navigator.share`, sonst Zwischenablage). Danach gleichen alle
 gekoppelten Geräte über ein Dokument in Firestore ab.
 
+Vorerst privat: Die Zeile „Abgleich“ erscheint nur auf gekoppelten Geräten, auf anderen erst nach
+Öffnen von `./#abgleich`. Das allein hält niemanden ab, deshalb verbieten die Regeln das Anlegen
+neuer Dokumente (`allow create: if false`). Die bestehende Ablage lässt sich weiter lesen und
+schreiben. Für eine neue Ablage `create` vorübergehend wie `update` erlauben.
+
 **Schlüssel.** `geheimnisErzeugen` liefert 32 Zufallsbytes (base64url, 43 Zeichen). Per
 HKDF-SHA-256 (`ableiten` in `kern/verschluesselung.js`) ergeben sich daraus die Dokument-ID
 (64 Hex-Zeichen) und ein AES-GCM-Schlüssel (256 Bit). Das Geheimnis liegt im localStorage unter
@@ -152,11 +157,11 @@ service cloud.firestore {
   match /databases/{db}/documents {
     match /ablagen/{id} {
       allow get, delete: if id.size() == 64;
-      allow create, update: if id.size() == 64
+      allow update: if id.size() == 64
         && request.resource.data.keys().hasOnly(['daten', 'iv', 'version'])
         && request.resource.data.daten is string
         && request.resource.data.daten.size() < 900000;
-      allow list: if false;
+      allow create, list: if false;
     }
   }
 }
