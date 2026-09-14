@@ -74,6 +74,15 @@ dem Formular stehen die fünf neuesten eigenen Einträge. Im Archiv tragen eigen
 „Selbst eingetragen · Ändern“, auf der Vorschau-Karte steht „selbst eingetragen“ in der
 Meta-Zeile. Ändern und Löschen gibt es nur für eigene Einträge.
 
+**Abgabedatum.** Das freiwillige Feld „Bis“ setzt `bis` am eigenen Eintrag (muss nach dem Tag des
+Aufgebens liegen). Die Knöpfe darüber sind „Nächste Stunde“ (leer) und die nächsten drei Tage mit
+Unterricht des Kurses (`naechsteStunden`, ohne Entfall und freie Tage). In der Vorschau sammelt
+`hausaufgabenAmTag` je Kurs: aus der letzten Stunde alles ohne `bis` oder mit Abgabe ab dem
+gezeigten Tag, dazu eigene Einträge früherer Stunden mit Aufgabetag < Tag ≤ `bis`. Der Digest
+liefert das als `kurse[].hausaufgaben: [{ text, bis }]`; die Karte zeigt Aufgaben mit `bis` einzeln
+mit leisem „bis …“. Der Schulmanager liefert kein Abgabedatum, deshalb gibt es `bis` nur bei
+eigenen Einträgen.
+
 **Einstellungen.** Eine Übersicht mit einer Zeile je Thema (Beim Öffnen, Kurse, Vorschau,
 Daten, Abgleich), jeweils mit dem aktuellen Stand darunter. Details stehen auf Unterseiten.
 
@@ -266,9 +275,11 @@ und wird nirgends angezeigt. Kursnamen werden roh gespeichert, ein Alias wirkt n
 
 Selbst eingetragene Einträge sind normale Einträge mit `thema: ""` und `position` ab 1001
 (`EIGENE_POSITION_AB` in `kern/mergen.js`). Der Schulmanager zählt je Kurs und Tag ab 1, ein Abruf
-trifft ihre ID deshalb nie, und sie stehen unter den Einträgen der Lehrkraft. Ein eigenes Feld
+trifft ihre ID deshalb nie, und sie stehen unter den Einträgen der Lehrkraft. Ein Merkmal „eigen“
 braucht es nicht: Prüfung beim Lesen, Export und Import behalten sie unverändert. Sie zählen wie
-jeder Eintrag, schließen also auch „Letzte Stunde fehlt“.
+jeder Eintrag, schließen also auch „Letzte Stunde fehlt“. Einziges Zusatzfeld ist das freiwillige
+Abgabedatum `bis` („YYYY-MM-DD“, nach `datum`); `pruefeBestand` verwirft es an Einträgen aus dem
+Schulmanager und bei ungültigem Datum.
 
 Zwei Arten von Daten, zwei Regeln: `eintraege` ist das Archiv und schrumpft nie. `stundenplan`
 ist ein Cache; ein neuer Abruf ersetzt die Tage im abgerufenen Fenster vollständig, damit

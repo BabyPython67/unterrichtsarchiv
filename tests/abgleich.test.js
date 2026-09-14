@@ -185,6 +185,16 @@ test("abgleich: iPad trägt ein, Handy übernimmt, Handy löscht, iPad übernimm
   assert.equal(ipad.eintraege.length, 0, "Löschen kommt auf dem iPad an");
 });
 
+test("abgleich: nur das Abgabedatum geändert — neuer Stempel, die Änderung kommt auf dem anderen Gerät an", () => {
+  const felder = { kurs: "Deutsch", datum: "2026-09-14", hausaufgabe: "Aufsatz", bis: "2026-09-18" };
+  const r1 = eigenenEintragAnlegen([], felder, "2026-09-14", T1);
+  const v1 = aenderungenStempeln(bestand(), bestand({ eintraege: r1.eintraege }), T1);
+  const r2 = eigenenEintragAendern(v1.eintraege, r1.eintrag.id, { ...felder, bis: "2026-09-21" }, "2026-09-14", T2);
+  const v2 = aenderungenStempeln(v1, bestand({ ...v1, eintraege: r2.eintraege }), T2);
+  assert.equal(v2.eintraege[0].geaendertUm, T2);
+  assert.equal(beide(v1, v2).eintraege[0].bis, "2026-09-21");
+});
+
 test("pruefeBestand behält geaendertUm, Grabsteine und Stempel, Müll fliegt", () => {
   const ms = Date.parse(T1);
   const b = pruefeBestand({ ...leererBestand(),

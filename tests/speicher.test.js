@@ -130,3 +130,12 @@ test("pruefeBestand und Export behalten selbst eingetragene Einträge (position 
   b.eintraege = [{ id: "Chemie|2026-09-14|1001", kurs: "Chemie", datum: "2026-09-14", thema: "", hausaufgabe: "S. 45", position: 1001, ersterfasst: "2026-09-14", geaendert: null }];
   assert.deepEqual(pruefeBestand(JSON.parse(exportText(b))).eintraege, b.eintraege);
 });
+
+test("pruefeBestand: Abgabedatum bleibt bei eigenen Einträgen, ungültiges oder an Schulmanager-Einträgen fällt weg", () => {
+  const b = leererBestand();
+  const eintrag = (position, bis) => ({ id: `Deutsch|2026-09-14|${position}`, kurs: "Deutsch", datum: "2026-09-14", thema: "", hausaufgabe: "Aufsatz", position, ersterfasst: "2026-09-14", geaendert: null, bis });
+  b.eintraege = [eintrag(1001, "2026-09-18"), eintrag(1002, "2026-09-14"), eintrag(1003, "morgen"), eintrag(1, "2026-09-18")];
+  const r = pruefeBestand(JSON.parse(exportText(b))).eintraege;
+  assert.deepEqual(r.map((e) => e.bis), ["2026-09-18", undefined, undefined, undefined]);
+  assert.deepEqual(r[0], b.eintraege[0]);
+});

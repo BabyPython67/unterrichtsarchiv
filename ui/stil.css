@@ -584,6 +584,7 @@ input[type="time"] {
 }
 
 .karte-ha b { font-weight: 650; }
+.karte-ha .bis { display: block; margin-top: 2px; color: var(--leise); font-size: 13px; }
 
 .karte-thema {
   margin: 8px 0 0;

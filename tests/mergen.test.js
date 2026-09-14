@@ -147,6 +147,33 @@ test("eigene Einträge mit Uhrzeit: Position aus Millisekunden, zwei Geräte ver
   assert.equal(gemergt.geaendertUm, t, "Import aus Export-Datei behält geaendertUm");
 });
 
+test("eigene Einträge mit Abgabedatum: anlegen, nur bis ändern, entfernen, umziehen; ungültiges bis wirft", () => {
+  const a = eigenenEintragAnlegen([], { ...felder("Deutsch", "2026-09-14", "Aufsatz"), bis: "2026-09-18" }, "2026-09-14");
+  assert.equal(a.eintrag.bis, "2026-09-18");
+  const ohne = eigenenEintragAnlegen([], { ...felder("Deutsch", "2026-09-14", "x"), bis: "" }, "2026-09-14");
+  assert.equal("bis" in ohne.eintrag, false, "leeres bis legt kein Feld an");
+  assert.throws(() => eigenenEintragAnlegen([], { ...felder("Deutsch", "2026-09-14", "x"), bis: "2026-09-14" }, "2026-09-14"), /Abgabe/);
+  assert.throws(() => eigenenEintragAnlegen([], { ...felder("Deutsch", "2026-09-14", "x"), bis: "18.09.2026" }, "2026-09-14"), /Abgabe/);
+
+  const gleich = eigenenEintragAendern(a.eintraege, a.eintrag.id, { ...felder("Deutsch", "2026-09-14", "Aufsatz"), bis: "2026-09-18" }, "2026-09-15");
+  assert.equal(gleich.eintraege, a.eintraege, "gleicher Text und gleiches bis: nichts geändert");
+  const spaeter = eigenenEintragAendern(a.eintraege, a.eintrag.id, { ...felder("Deutsch", "2026-09-14", "Aufsatz"), bis: "2026-09-21" }, "2026-09-15");
+  assert.deepEqual([spaeter.eintrag.bis, spaeter.eintrag.geaendert], ["2026-09-21", "2026-09-15"]);
+  const weg = eigenenEintragAendern(spaeter.eintraege, a.eintrag.id, felder("Deutsch", "2026-09-14", "Aufsatz"), "2026-09-16");
+  assert.equal("bis" in weg.eintrag, false);
+  const um = eigenenEintragAendern(a.eintraege, a.eintrag.id, { ...felder("Deutsch", "2026-09-16", "Aufsatz"), bis: "2026-09-18" }, "2026-09-16");
+  assert.deepEqual([um.eintrag.id, um.eintrag.bis], ["Deutsch|2026-09-16|1001", "2026-09-18"]);
+  assert.throws(() => eigenenEintragAendern(a.eintraege, a.eintrag.id, { ...felder("Deutsch", "2026-09-18", "Aufsatz"), bis: "2026-09-18" }, "2026-09-16"), /Abgabe/);
+});
+
+test("mergen: Import behält bis nur bei eigenen Einträgen mit gültigem Datum", () => {
+  const eigen = { id: "Deutsch|2026-09-14|1001", kurs: "Deutsch", datum: "2026-09-14", position: 1001, thema: "", hausaufgabe: "Aufsatz", bis: "2026-09-18" };
+  const lehrer = { id: "Deutsch|2026-09-14|1", kurs: "Deutsch", datum: "2026-09-14", position: 1, thema: "x", hausaufgabe: "y", bis: "2026-09-18" };
+  const kaputt = { ...eigen, id: "Deutsch|2026-09-14|1002", position: 1002, bis: "2026-09-13" };
+  const r = mergen([], [eigen, lehrer, kaputt], "2026-09-15").eintraege;
+  assert.deepEqual(r.map((e) => e.bis), ["2026-09-18", undefined, undefined]);
+});
+
 test("eigene Einträge: löschen entfernt nur den einen; eigeneEintraege neuestes Datum zuerst", () => {
   let r = eigenenEintragAnlegen([lehrkraft("Chemie", "2026-09-14")], felder("Chemie", "2026-09-11", "a"), "2026-09-11");
   r = eigenenEintragAnlegen(r.eintraege, felder("Chemie", "2026-09-14", "b"), "2026-09-14");

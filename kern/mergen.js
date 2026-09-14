@@ -30,6 +30,7 @@ export function mergen(bestand, zeilen, heute) {
         ersterfasst: z.ersterfasst || heute,
         geaendert: z.geaendert || null,
         ...(z.geaendertUm ? { geaendertUm: z.geaendertUm } : {}),
+        ...(istEigen(z) && bisGueltig(z.datum, z.bis) ? { bis: z.bis } : {}),
       });
       neu++;
       continue;
@@ -58,12 +59,22 @@ const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 
 export const istEigen = (e) => !!e && Number.isInteger(e.position) && e.position >= EIGENE_POSITION_AB;
 
-function eigeneFelder({ kurs, datum, hausaufgabe } = {}) {
+/** Abgabedatum („bis“) eines eigenen Eintrags: gültiges Datum nach dem Tag des Aufgebens. */
+export const bisGueltig = (datum, bis) => typeof bis === "string" && DATUM.test(bis) && bis > datum;
+
+function eigeneFelder({ kurs, datum, hausaufgabe, bis } = {}) {
   const text = typeof hausaufgabe === "string" ? hausaufgabe.trim() : "";
   if (typeof kurs !== "string" || !kurs) throw new Error("Kurs fehlt.");
   if (!DATUM.test(datum || "")) throw new Error("Datum fehlt.");
   if (!text) throw new Error("Hausaufgabe fehlt.");
-  return { kurs, datum, hausaufgabe: text };
+  if (bis && !bisGueltig(datum, bis)) throw new Error("Abgabe muss nach dem Aufgabetag liegen.");
+  return { kurs, datum, hausaufgabe: text, bis: bis || "" };
+}
+
+/** Eintrag mit dem Abgabedatum aus den Feldern; leeres bis entfernt das Feld. */
+function mitBis(eintrag, bis) {
+  const { bis: _alt, ...rest } = eintrag;
+  return bis ? { ...rest, bis } : rest;
 }
 
 // Mit jetzt (ISO-Zeitstempel) wird die Position aus den Millisekunden gebildet, damit zwei Geräte
@@ -79,10 +90,10 @@ function naechstePosition(eintraege, kurs, datum, jetzt) {
 export function eigenenEintragAnlegen(eintraege, felder, heute, jetzt) {
   const f = eigeneFelder(felder);
   const position = naechstePosition(eintraege, f.kurs, f.datum, jetzt);
-  const eintrag = {
+  const eintrag = mitBis({
     id: `${f.kurs}|${f.datum}|${position}`, kurs: f.kurs, datum: f.datum, thema: "", hausaufgabe: f.hausaufgabe,
     position, ersterfasst: heute, geaendert: null,
-  };
+  }, f.bis);
   return { eintraege: [...eintraege, eintrag], eintrag };
 }
 
@@ -95,16 +106,16 @@ export function eigenenEintragAendern(eintraege, id, felder, heute, jetzt) {
   if (!istEigen(alt)) throw new Error("Nur selbst eingetragene Einträge lassen sich ändern.");
   const f = eigeneFelder(felder);
   if (f.kurs === alt.kurs && f.datum === alt.datum) {
-    if (f.hausaufgabe === alt.hausaufgabe) return { eintraege, eintrag: alt };
-    const eintrag = { ...alt, hausaufgabe: f.hausaufgabe, geaendert: heute };
+    if (f.hausaufgabe === alt.hausaufgabe && f.bis === (alt.bis || "")) return { eintraege, eintrag: alt };
+    const eintrag = mitBis({ ...alt, hausaufgabe: f.hausaufgabe, geaendert: heute }, f.bis);
     return { eintraege: eintraege.map((e) => (e.id === id ? eintrag : e)), eintrag };
   }
   const rest = eintraege.filter((e) => e.id !== id);
   const position = naechstePosition(rest, f.kurs, f.datum, jetzt);
-  const eintrag = {
+  const eintrag = mitBis({
     ...alt, id: `${f.kurs}|${f.datum}|${position}`, kurs: f.kurs, datum: f.datum, hausaufgabe: f.hausaufgabe,
     position, geaendert: heute,
-  };
+  }, f.bis);
   return { eintraege: [...rest, eintrag], eintrag };
 }
 

@@ -13,6 +13,7 @@ import {
 import {
   baueDigest, digestKopfzeile, tagesablauf, herkunftZeile, syncZeile, planFunktion, schultagSuchen, datumPlus, isoDatum, vorTagenText,
   ermittleWochenplan, mitStandard, erinnerung, stundenSeitAbruf, stundenSeitAbrufText, eintragDatum, kurseZumEintragen, kurseOhneHausaufgabe,
+  naechsteStunden,
 } from "../kern/logik.js";
 import {
   kurseZusammenfassung, vorschauZusammenfassung, wochenplanZusammenfassung, freieTageZusammenfassung,
@@ -55,7 +56,7 @@ try { storage = window.localStorage; } catch { storage = null; }
 // kurs ist die geöffnete Kursseite im Archiv, null die Kursliste.
 const FILTER_LEER = () => ({ kurs: null, abDatum: "", suche: "", nurHausaufgabe: false, seitKlausur: false, zeitraum: "alles" });
 // datum "" heißt: vorgeschlagenes Datum (eintragDatum), erst eine Wahl im Feld legt es fest.
-const ENTWURF_LEER = () => ({ kurs: "", hausaufgabe: "", datum: "" });
+const ENTWURF_LEER = () => ({ kurs: "", hausaufgabe: "", datum: "", bis: "" });
 
 const zustand = {
   bestand: leererBestand(),
@@ -563,7 +564,7 @@ function eintragZeile(e, suche) {
   else if (!eigen) inhalt.append(el("div", { class: "thema leer", text: "Kein Inhalt eingetragen" }));
   if (e.hausaufgabe) inhalt.append(el("div", { class: "ha" }, el("b", { text: "Hausaufgabe: " }), hervorheben(e.hausaufgabe, suche)));
   if (eigen) {
-    inhalt.append(el("div", { class: "eigen" }, "Selbst eingetragen · ", el("button", {
+    inhalt.append(el("div", { class: "eigen" }, `Selbst eingetragen · ${e.bis ? `bis ${wochentag(e.bis)} · ` : ""}`, el("button", {
       type: "button", class: "textknopf", "aria-label": `Selbst eingetragene Hausaufgabe vom ${wochentag(e.datum)} ändern`,
       onclick: () => bearbeitenOeffnen(e.id, "archiv"),
     }, "Ändern")));
@@ -643,7 +644,13 @@ function kursKarte(k) {
   if (k.luecke) kopf.append(el("span", { class: "marke", text: "Letzte Stunde fehlt" }));
   if (k.sicherheit === "unsicher") kopf.append(el("span", { class: "marke leise", text: "unsicher" }));
   const karte = el("article", { class: "karte" }, kopf);
-  if (k.hausaufgabe) karte.append(el("div", { class: "karte-ha" }, el("b", { text: "Hausaufgabe: " }), k.hausaufgabe));
+  // Aufgaben zur nächsten Stunde zusammen, jede mit Abgabedatum einzeln mit leisem „bis …“.
+  const hausaufgaben = k.hausaufgaben || [];
+  const ohneBis = hausaufgaben.filter((h) => !h.bis).map((h) => h.text).join("\n");
+  if (ohneBis) karte.append(el("div", { class: "karte-ha" }, el("b", { text: "Hausaufgabe: " }), ohneBis));
+  for (const h of hausaufgaben.filter((h) => h.bis)) {
+    karte.append(el("div", { class: "karte-ha" }, el("b", { text: "Hausaufgabe: " }), h.text, el("span", { class: "bis", text: `bis ${wochentag(h.bis)}` })));
+  }
   if (k.thema) karte.append(el("p", { class: "karte-thema", text: k.thema }));
   else if (k.letztesDatum && k.selbst !== "alle") karte.append(el("p", { class: "karte-thema leer", text: "Kein Inhalt eingetragen" }));
   if (k.letztesDatum) {
@@ -718,8 +725,8 @@ function renderEintragen() {
 
   // Beim Ändern gelten die Werte nur auf dieser Seite, beim Neuanlegen landen sie im Entwurf.
   const werte = alt
-    ? { kurs: alt.kurs, hausaufgabe: alt.hausaufgabe, datum: alt.datum }
-    : { ...zustand.entwurf, datum: zustand.entwurf.datum || eintragDatum(new Date(), bestand.einstellungen) };
+    ? { kurs: alt.kurs, hausaufgabe: alt.hausaufgabe, datum: alt.datum, bis: alt.bis || "" }
+    : { ...zustand.entwurf, datum: zustand.entwurf.datum || eintragDatum(new Date(), bestand.einstellungen), bis: zustand.entwurf.bis || "" };
   const merken = (feld, wert) => {
     werte[feld] = wert;
     if (!alt) zustand.entwurf[feld] = wert;
@@ -739,6 +746,10 @@ function renderEintragen() {
   const datum = el("input", { type: "date", id: "eintrag-datum", value: werte.datum });
   const kursFehlt = el("p", { class: "fehlt", id: "eintrag-kurs-fehlt", text: "Kurs wählen.", hidden: true });
   const textFehlt = el("p", { class: "fehlt", id: "eintrag-ha-fehlt", text: "Hausaufgabe eingeben.", hidden: true });
+  const bisKnoepfe = el("div", { class: "chips", role: "group", "aria-label": "Abgabe" });
+  const bisFeld = el("input", { type: "date", id: "eintrag-bis", "aria-describedby": "eintrag-bis-falsch eintrag-bis-info" });
+  const bisFalsch = el("p", { class: "fehlt", id: "eintrag-bis-falsch", text: "Abgabe muss nach dem Aufgabetag liegen.", hidden: true });
+  const bisInfo = el("p", { class: "info", id: "eintrag-bis-info" });
   let ohneZuordnung = new Map();   // Kurs → gleichnamiges Fach im Stundenplan, das noch keinem Kurs zugeordnet ist
 
   function kursSetzen(kurs) {
@@ -746,6 +757,23 @@ function renderEintragen() {
     merken("kurs", auswahl.value);
     if (auswahl.value) kursFehlt.hidden = true;
     vorschlaegeFuellen();
+    bisFuellen();
+  }
+
+  // Abgabedatum: leer heißt „Nächste Stunde“. Knöpfe für die nächsten Stunden des Kurses, sonst Kalender.
+  function bisFuellen() {
+    const hatteFokus = bisKnoepfe.contains(document.activeElement);
+    bisFeld.value = werte.bis;
+    bisFeld.min = datumPlus(werte.datum, 1);
+    bisFalsch.hidden = !werte.bis || werte.bis > werte.datum;
+    bisInfo.textContent = werte.bis ? "Die Vorschau zeigt sie in jeder Stunde bis zur Abgabe." : "Die Vorschau zeigt sie zur nächsten Stunde des Kurses.";
+    const knopf = (wert, beschriftung) => el("button", {
+      type: "button", "aria-pressed": String(werte.bis === wert), onclick: () => { merken("bis", wert); bisFuellen(); },
+    }, beschriftung);
+    bisKnoepfe.textContent = "";
+    bisKnoepfe.append(knopf("", "Nächste Stunde"),
+      ...naechsteStunden(zustand.bestand, werte.kurs, werte.datum, heuteIso()).map((d) => knopf(d, wochentag(d))));
+    if (hatteFokus) bisKnoepfe.querySelector('[aria-pressed="true"]')?.focus();
   }
 
   function auswahlFuellen() {
@@ -794,14 +822,21 @@ function renderEintragen() {
     merken("datum", datum.value);
     auswahlFuellen();
     vorschlaegeFuellen();
+    bisFuellen();
+  });
+  bisFeld.addEventListener("change", () => {
+    merken("bis", bisFeld.value);
+    bisFuellen();
   });
 
   const speichernKnopf = el("button", { type: "button", class: "primaer", onclick: () => {
-    const felder = { kurs: auswahl.value, datum: werte.datum, hausaufgabe: text.value };
+    const felder = { kurs: auswahl.value, datum: werte.datum, hausaufgabe: text.value, bis: werte.bis };
     kursFehlt.hidden = !!felder.kurs;
     textFehlt.hidden = !!felder.hausaufgabe.trim();
+    bisFalsch.hidden = !felder.bis || felder.bis > felder.datum;
     if (!felder.kurs) return auswahl.focus();
     if (!felder.hausaufgabe.trim()) return text.focus();
+    if (!bisFalsch.hidden) return bisFeld.focus();
     const best = zustand.bestand;
     let r;
     try {
@@ -839,12 +874,14 @@ function renderEintragen() {
 
   auswahlFuellen();
   vorschlaegeFuellen();
+  bisFuellen();
   const feld = (id, titel, eingabe, ...rest) => el("div", { class: "formfeld" }, el("label", { for: id, text: titel }), eingabe, ...rest);
   box.append(
     vorschlaege,
     feld("eintrag-kurs", "Kurs", auswahl, kursFehlt),
     feld("eintrag-ha", "Hausaufgabe", text, textFehlt),
-    feld("eintrag-datum", "Aufgegeben am", datum, el("p", { class: "info", text: "Die Vorschau zeigt sie ab der nächsten Stunde des Kurses." })),
+    feld("eintrag-datum", "Aufgegeben am", datum),
+    feld("eintrag-bis", "Bis (freiwillig)", bisKnoepfe, bisFeld, bisFalsch, bisInfo),
     el("div", { class: "knopfreihe" }, speichernKnopf, loeschenKnopf),
   );
 
@@ -852,7 +889,7 @@ function renderEintragen() {
   const eigene = eigeneEintraege(bestand.eintraege).slice(0, 5);
   if (!eigene.length) return;
   box.append(el("h3", { text: "Selbst eingetragen" }), gruppe(eigene.map((e) =>
-    zeile(e.hausaufgabe.split("\n")[0], `${anzeigename(e.kurs, bestand.kursAlias)} · ${wochentag(e.datum)}`, () => bearbeitenOeffnen(e.id, "eintragen")))));
+    zeile(e.hausaufgabe.split("\n")[0], `${anzeigename(e.kurs, bestand.kursAlias)} · ${wochentag(e.datum)}${e.bis ? ` · bis ${wochentag(e.bis)}` : ""}`, () => bearbeitenOeffnen(e.id, "eintragen")))));
 }
 
 /** Selbst eingetragenen Eintrag ändern. zurueck: "archiv" (dorthin, wo er stand) oder "eintragen". */

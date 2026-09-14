@@ -6,6 +6,7 @@
 
 import { WOCHENTAGE } from "./filtern.js";
 import { EINSTELLUNGEN_STANDARD, leererStundenplan } from "./logik.js";
+import { EIGENE_POSITION_AB, bisGueltig } from "./mergen.js";
 
 export const SPEICHER_KEY = "unterrichtsarchiv:v1";   // Key bleibt, die Schema-Version steht im Objekt
 export const DEFEKT_KEY = "unterrichtsarchiv:v1:defekt";
@@ -158,6 +159,7 @@ export function pruefeBestand(obj) {
       ersterfasst: typeof e.ersterfasst === "string" ? e.ersterfasst : null,
       geaendert: typeof e.geaendert === "string" ? e.geaendert : null,
       ...(typeof e.geaendertUm === "string" && ZEITSTEMPEL.test(e.geaendertUm) ? { geaendertUm: e.geaendertUm } : {}),
+      ...(position >= EIGENE_POSITION_AB && bisGueltig(e.datum, e.bis) ? { bis: e.bis } : {}),   // Abgabedatum nur bei eigenen
     });
   }
   const zeiten = (o, erlaubt) => Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {})

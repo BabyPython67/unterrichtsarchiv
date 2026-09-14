@@ -236,6 +236,29 @@ export function letzteStunde(eintraege, kurs, vorDatum) {
   return { datum: best, eintraege: liste };
 }
 
+/**
+ * Hausaufgaben eines Kurses für den Tag `datum`. Aus der letzten Stunde alle ohne Abgabedatum und
+ * die, deren Abgabe nicht vor diesem Tag liegt. Dazu selbst eingetragene mit Abgabedatum aus
+ * früheren Stunden, solange die Abgabe noch kommt (Aufgabetag < datum ≤ bis).
+ * → [{ text, bis }]: zuerst die ohne Abgabedatum in Positionsreihenfolge, dann nach Abgabe.
+ */
+export function hausaufgabenAmTag(eintraege, kurs, datum, letzte = letzteStunde(eintraege, kurs, datum)) {
+  const ohne = [];
+  const mit = [];
+  const ausLetzter = new Set(letzte ? letzte.eintraege.map((e) => e.id) : []);
+  for (const e of letzte ? letzte.eintraege : []) {
+    if (!e.hausaufgabe) continue;
+    if (!e.bis) ohne.push({ text: e.hausaufgabe, bis: null });
+    else if (e.bis >= datum) mit.push(e);
+  }
+  for (const e of eintraege) {
+    if (e.kurs !== kurs || !e.bis || !e.hausaufgabe || ausLetzter.has(e.id)) continue;
+    if (e.datum < datum && datum <= e.bis) mit.push(e);
+  }
+  mit.sort((a, b) => a.bis.localeCompare(b.bis) || a.datum.localeCompare(b.datum) || a.position - b.position);
+  return [...ohne, ...mit.map((e) => ({ text: e.hausaufgabe, bis: e.bis }))];
+}
+
 // ---------------------------------------------------------------------------
 // Lücken: Unterricht laut Stundenplan, zu dem das Archiv (noch) keinen Eintrag hat
 // ---------------------------------------------------------------------------
@@ -357,8 +380,10 @@ export function tagLabel(datum, heute) {
  * daten: { eintraege, kursAlias, stundenplan, kurszuordnung, einstellungen, datum? }
  * datum erzwingt einen Tag (Pfeilnavigation); sonst naechsterSchultag.
  * → { datum, label, wochentag, herkunft, angepasst, kurse: [{ kurs, name, fach, thema, hausaufgabe,
- *      letztesDatum, vorTagen, alt, sicherheit, status, stunden, zuordnungFehlt, luecke, selbst }],
+ *      hausaufgaben, letztesDatum, vorTagen, alt, sicherheit, status, stunden, zuordnungFehlt, luecke, selbst }],
  *    entfallen: [{ kurs, fach, stunden, name }], anzahlHA, luecke }
+ * kurse[].hausaufgaben: [{ text, bis }] aus hausaufgabenAmTag, hausaufgabe ist derselbe Text verbunden.
+ * Eine selbst eingetragene Hausaufgabe mit Abgabedatum steht so an jedem Tag des Kurses bis zur Abgabe.
  * kurse[].luecke: { datum, nachAbruf } oder null. Die letzte gehaltene Stunde des Kurses laut
  * Stundenplan (datum) hat keinen Eintrag im Archiv; nachAbruf: sie lag nach dem letzten Abruf.
  * Ein selbst eingetragener Eintrag zählt wie jeder andere, schließt also auch die Lücke.
@@ -388,7 +413,8 @@ export function baueDigest(jetzt, daten) {
   const kurse = plan.kurse.map((k) => {
     const letzte = k.kurs ? letzteStunde(eintraege, k.kurs, datum) : null;
     const thema = letzte ? letzte.eintraege.map((e) => e.thema).filter(Boolean).join("\n") : "";
-    const hausaufgabe = letzte ? letzte.eintraege.map((e) => e.hausaufgabe).filter(Boolean).join("\n") : "";
+    const hausaufgaben = k.kurs ? hausaufgabenAmTag(eintraege, k.kurs, datum, letzte) : [];
+    const hausaufgabe = hausaufgaben.map((h) => h.text).join("\n");
     const vorTagen = letzte ? tageZwischen(letzte.datum, heute) : null;
     const gehalten = k.kurs ? zuletztGehalten.get(k.kurs) : undefined;
     const luecke = gehalten && (!letzte || letzte.datum < gehalten) ? { datum: gehalten, nachAbruf: nachAbruf(gehalten, abruf) } : null;
@@ -406,6 +432,7 @@ export function baueDigest(jetzt, daten) {
       alt: vorTagen !== null && vorTagen > einst.altSchwelleTage,
       thema,
       hausaufgabe,
+      hausaufgaben,
       luecke,
       selbst: !eigene ? null : eigene === letzte.eintraege.length ? "alle" : "teils",
     };
@@ -461,7 +488,9 @@ export function digestText(digest) {
   if (!digest.datum) return digest.label;
   const zeilen = [`${digest.label} · ${digestKopfzeile(digest)}`];
   for (const k of digest.kurse) {
-    if (k.hausaufgabe) zeilen.push(`${k.name}: ${k.hausaufgabe.replace(/\s*\n\s*/g, " / ")}`);
+    const liste = k.hausaufgaben || (k.hausaufgabe ? [{ text: k.hausaufgabe, bis: null }] : []);
+    const texte = liste.map((h) => h.text.replace(/\s*\n\s*/g, " / ") + (h.bis ? ` (bis ${wochentagLesbar(h.bis)})` : ""));
+    if (texte.length) zeilen.push(`${k.name}: ${texte.join(" / ")}`);
   }
   const ohne = digest.kurse.filter((k) => !k.hausaufgabe).map((k) => k.name);
   if (ohne.length) zeilen.push(`Ohne Hausaufgabe: ${ohne.join(", ")}`);
@@ -543,6 +572,24 @@ export function eintragDatum(jetzt, einstellungen) {
   let d = gehaltenBis(jetzt, einst.schulbeginn);
   for (let i = 0; i < SCHULTAGE_VORAUS && (istWochenende(d) || istFrei(d, einst.freieTage)); i++) d = datumPlus(d, -1);
   return d;
+}
+
+/**
+ * Die nächsten Tage nach `nachDatum`, an denen der Kurs laut Tagesplan Unterricht hat, ohne
+ * Entfall, Wochenende und freie Tage. Für die Knöpfe beim Abgabedatum. Ein Fach ohne Zuordnung
+ * passt über seinen Namen (wie in kurseZumEintragen). → ["YYYY-MM-DD", …], höchstens anzahl
+ */
+export function naechsteStunden(daten, kurs, nachDatum, heute, anzahl = 3) {
+  if (!kurs || !nachDatum) return [];
+  const einst = mitStandard(daten.einstellungen);
+  const planFuer = planFunktion(daten, heute);
+  const tage = [];
+  for (let i = 1; i <= SCHULTAGE_VORAUS * 2 && tage.length < anzahl; i++) {
+    const d = datumPlus(nachDatum, i);
+    if (istWochenende(d) || istFrei(d, einst.freieTage)) continue;
+    if (planFuer(d).kurse.some((k) => k.kurs === kurs || (!k.kurs && k.fach === kurs))) tage.push(d);
+  }
+  return tage;
 }
 
 /**

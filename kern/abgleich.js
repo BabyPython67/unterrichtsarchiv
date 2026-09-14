@@ -181,7 +181,7 @@ export function aenderungenStempeln(vorher, nachher, jetzt) {
   const eintraege = nachher.eintraege.map((e) => {
     if (!istEigen(e)) return e;
     const v = alt.get(e.id);
-    return !v || v.hausaufgabe !== e.hausaufgabe ? { ...e, geaendertUm: jetzt } : e;
+    return !v || v.hausaufgabe !== e.hausaufgabe || (v.bis || "") !== (e.bis || "") ? { ...e, geaendertUm: jetzt } : e;
   });
   const geloescht = { ...nachher.geloescht };
   for (const id of alt.keys()) if (!ids.has(id)) geloescht[id] = jetzt;

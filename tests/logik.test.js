@@ -8,6 +8,7 @@ import {
   digestKopfzeile, tagesablauf, digestText, stundenplanUebernehmen, leererStundenplan, planFunktion, kurszuordnungErgaenzen,
   istFrei, istWochenende, datumPlus, tageZwischen, wochentagKuerzel, syncStatus, syncZeile, herkunftZeile, mitStandard,
   abrufStand, stundenSeitAbruf, stundenSeitAbrufText, erinnerung, lueckeText, eintragDatum, kurseZumEintragen, kurseOhneHausaufgabe,
+  hausaufgabenAmTag, naechsteStunden,
 } from "../kern/logik.js";
 import { leererBestand, pruefeBestand, exportText } from "../kern/speicher.js";
 import { importieren } from "../kern/importieren.js";
@@ -612,6 +613,45 @@ test("baueDigest: eigener Eintrag zählt als Eintrag und schließt die Lücke; s
   assert.deepEqual([k.Englisch.selbst, k.Englisch.hausaufgabe, k.Englisch.thema], ["alle", "Vokabeln Unit 4", ""]);
   assert.deepEqual([k.Mathematik.selbst, k.Mathematik.thema, k.Mathematik.hausaufgabe], ["teils", "Ableitung", "S. 45 Nr. 3"]);
   assert.equal(k.Deutsch.selbst, null);
+});
+
+test("Abgabedatum: Hausaufgabe steht in jeder Stunde des Kurses bis zur Abgabe, danach nicht mehr", () => {
+  const b = lueckeDaten();
+  const mitBis = (kurs, datum, text, position, bis) => ({ ...e(kurs, datum, "", text, position), bis });
+  b.eintraege.push(
+    mitBis("Englisch", "2026-09-14", "Referat", 1001, "2026-09-16"),
+    e("Englisch", "2026-09-15", "Tenses", "Vokabeln"),
+    mitBis("Mathematik", "2026-09-14", "Blatt 3", 1001, "2026-09-15"),
+  );
+  const jetzt = new Date(2026, 8, 15, 18, 0);
+
+  const di = baueDigest(jetzt, { ...b, datum: "2026-09-15" }).kurse.find((k) => k.kurs === "Englisch");
+  assert.deepEqual(di.hausaufgaben, [{ text: "Referat", bis: "2026-09-16" }], "aus der letzten Stunde, Abgabe noch offen");
+
+  const mi = baueDigest(jetzt, { ...b, datum: "2026-09-16" });
+  const englisch = mi.kurse.find((k) => k.kurs === "Englisch");
+  assert.deepEqual(englisch.hausaufgaben, [{ text: "Vokabeln", bis: null }, { text: "Referat", bis: "2026-09-16" }],
+    "am Abgabetag, obwohl dazwischen eine neuere Stunde liegt");
+  assert.equal(englisch.hausaufgabe, "Vokabeln\nReferat");
+  assert.equal(englisch.letztesDatum, "2026-09-15");
+  assert.match(digestText(mi), /^Englisch: Vokabeln \/ Referat \(bis Mi 16\.09\.\)$/m);
+  assert.deepEqual(mi.kurse.find((k) => k.kurs === "Mathematik").hausaufgaben, [], "Abgabe lag vor diesem Tag");
+
+  assert.deepEqual(hausaufgabenAmTag(b.eintraege, "Englisch", "2026-09-17"), [{ text: "Vokabeln", bis: null }], "nach der Abgabe weg");
+  assert.deepEqual(hausaufgabenAmTag(b.eintraege, "Englisch", "2026-09-14"), [], "vor dem Aufgabetag nichts");
+});
+
+test("naechsteStunden: Tage mit Unterricht des Kurses nach dem Datum, ohne Entfall und freie Tage, höchstens anzahl", () => {
+  const b = lueckeDaten();
+  b.stundenplan.tage["2026-09-16"].push({ stunde: 5, fach: "KU", status: "normal" });
+  assert.deepEqual(naechsteStunden(b, "Englisch", "2026-09-14", "2026-09-14", 2), ["2026-09-15", "2026-09-16"]);
+  assert.equal(naechsteStunden(b, "Englisch", "2026-09-14", "2026-09-14").length, 3);
+  assert.deepEqual(naechsteStunden(b, "Deutsch", "2026-09-14", "2026-09-14", 1), ["2026-09-16"], "Entfall am Di übersprungen");
+  assert.deepEqual(naechsteStunden(b, "KU", "2026-09-14", "2026-09-14", 1), ["2026-09-16"], "Fach ohne Zuordnung");
+  assert.deepEqual(naechsteStunden(b, "Mathematik", "2026-09-14", "2026-09-14", 1), ["2026-09-16"], "der Tag selbst zählt nicht");
+  assert.deepEqual(naechsteStunden(b, "", "2026-09-14", "2026-09-14"), []);
+  b.einstellungen.freieTage = ["2026-09-15"];
+  assert.deepEqual(naechsteStunden(b, "Englisch", "2026-09-14", "2026-09-14", 1), ["2026-09-16"], "freier Tag");
 });
 
 test("eintragDatum: letzter Tag mit begonnenem Unterricht, Wochenende und freie Tage übersprungen", () => {

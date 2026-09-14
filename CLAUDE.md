@@ -23,7 +23,8 @@ Eigenständiges Projekt, nicht verwandt mit anderen Repos im Workspace.
 - Einzige Ausnahme vom Schrumpfen: selbst eingetragene Einträge (`position` ab 1001, siehe
   `kern/mergen.js`). Nur sie lassen sich in der App ändern und löschen, Einträge aus dem
   Schulmanager nie. Gelöschte eigene Einträge hinterlassen einen Grabstein (`geloescht`), damit
-  das Löschen beim Abgleich auf den anderen Geräten ankommt.
+  das Löschen beim Abgleich auf den anderen Geräten ankommt. Nur eigene Einträge haben ein
+  Abgabedatum (`bis`); an Einträgen aus dem Schulmanager wird es beim Prüfen verworfen.
 - Zusammenführen zweier Bestände nur in `kern/abgleich.js` (`zusammenfuehren`). Stempel für den
   Abgleich setzt nur `aenderungenStempeln` beim Speichern, nie Code in `ui/` von Hand.
 - Digest-Logik nur in `kern/logik.js` (`baueDigest`). Viewer und spätere Kurzbefehle nutzen

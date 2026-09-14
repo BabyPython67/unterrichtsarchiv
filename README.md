@@ -75,6 +75,10 @@ Danach stehen sie im Archiv und in der Vorschau wie alle anderen.
 - „Aufgegeben am“ ist der Tag, an dem die Hausaufgabe aufgegeben wurde, nicht der Abgabetag.
   Vorbelegt ist der letzte Schultag, an dem schon Unterricht war. Die Vorschau zeigt die
   Hausaufgabe ab der nächsten Stunde des Kurses.
+- „Bis“ ist freiwillig und gilt für Hausaufgaben mit späterer Abgabe. Die Knöpfe darunter nennen
+  die nächsten Stunden des Kurses, für andere Tage gibt es den Kalender. Die Vorschau zeigt die
+  Hausaufgabe dann in jeder Stunde des Kurses bis zum Abgabetag, mit „bis …“ dahinter. Danach
+  verschwindet sie aus der Vorschau, im Archiv bleibt sie.
 - Oben stehen die Kurse dieses Tages, die noch keine Hausaufgabe haben. Nach dem Abruf heißt das:
   Im Schulmanager steht für sie nichts. Antippen wählt den Kurs aus.
 - Selbst eingetragene Hausaufgaben sind im Archiv markiert. „Ändern“ öffnet sie zum Korrigieren
@@ -154,6 +158,8 @@ ersten Mal. Ob es aktuell ist, zeigt die Build-Kennung: Sie steht auf der Leseze
 der Box, die nach dem Antippen im Schulmanager erscheint. Stimmen beide überein, passt es. Bei
 allen anderen Änderungen reicht es, die App neu zu laden.
 
+- **14.09.2026:** Selbst eingetragene Hausaufgaben können ein Abgabedatum („Bis“) bekommen. Die
+  Vorschau zeigt sie dann bis zur Abgabe.
 - **14.09.2026:** Erinnerung unter den Reitern, wenn seit dem letzten Abruf Unterricht war, mit
   Link zum Schulmanager und Kurzanleitung. Uhrzeit unter Einstellungen → Vorschau.
 - **14.09.2026:** Abgleich zwischen Geräten: Einträge, Stundenplan und Einstellungen auf iPad und
