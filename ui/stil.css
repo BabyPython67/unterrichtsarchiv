@@ -373,6 +373,7 @@ button.einst-zeile:hover, a.einst-zeile:hover { background: var(--papier); }
 .einst-pfeil { color: var(--leise); font-size: 22px; line-height: 1; }
 .einst-rechts { flex: 0 0 auto; }
 .einst-zeile.gefahr .einst-titel { color: var(--gefahr); }
+.einst-zeile.warn .einst-wert { color: var(--warn-fg); }
 
 .segment {
   display: inline-flex;

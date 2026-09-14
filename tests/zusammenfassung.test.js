@@ -2,9 +2,22 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   kurseZusammenfassung, vorschauZusammenfassung, wochenplanZusammenfassung, freieTageZusammenfassung,
-  faecherImStundenplan, faecherZusammenfassung, datenZusammenfassung,
+  faecherImStundenplan, faecherZusammenfassung, datenZusammenfassung, abgleichZusammenfassung,
 } from "../kern/zusammenfassung.js";
 import { leererBestand } from "../kern/speicher.js";
+
+test("abgleichZusammenfassung: aus, ein, zuletzt heute/gestern/Datum, wartet, Fehler", () => {
+  const jetzt = new Date(2026, 8, 14, 15, 0);
+  const iso = (...t) => new Date(...t).toISOString();
+  const s = { geheimnis: "x", letzter: null, fehler: null, ausstehend: false };
+  assert.equal(abgleichZusammenfassung(null, jetzt), "Aus");
+  assert.equal(abgleichZusammenfassung(s, jetzt), "Ein");
+  assert.equal(abgleichZusammenfassung({ ...s, ausstehend: true }, jetzt), "Ein · wartet auf Verbindung");
+  assert.equal(abgleichZusammenfassung({ ...s, letzter: iso(2026, 8, 14, 14, 2) }, jetzt), "Ein · zuletzt heute 14:02");
+  assert.equal(abgleichZusammenfassung({ ...s, letzter: iso(2026, 8, 13, 7, 5) }, jetzt), "Ein · zuletzt gestern 07:05");
+  assert.equal(abgleichZusammenfassung({ ...s, letzter: iso(2026, 8, 1, 9, 30), ausstehend: true }, jetzt), "Ein · zuletzt am 01.09. 09:30 · wartet auf Verbindung");
+  assert.equal(abgleichZusammenfassung({ ...s, letzter: iso(2026, 8, 14, 14, 2), fehler: { art: "verweigert", text: "x" } }, jetzt), "Letzter Abgleich fehlgeschlagen");
+});
 
 const e = (kurs, datum) =>
   ({ id: `${kurs}|${datum}|1`, kurs, datum, thema: "x", hausaufgabe: "", position: 1, ersterfasst: "2026-09-01", geaendert: null });

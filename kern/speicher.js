@@ -18,6 +18,12 @@ const STUNDEN_STATUS = ["normal", "entfall", "vertretung", "verlegt"];
 const REITER = ["archiv", "vorschau"];
 const OVERRIDE_ARTEN = ["fix", "aus"];
 const SYNC_QUELLEN = ["bookmarklet", "script-ios", "script-android", "userscript"];
+const ZEITSTEMPEL = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/;
+
+// Abgleich zwischen Geräten (kern/abgleich.js): geloescht hält Grabsteine gelöschter eigener
+// Einträge (ID → Zeitpunkt), staende den Zeitpunkt der letzten Änderung je Block. Beide Felder
+// sind Zusätze ohne neue Schema-Version; fehlen sie, gelten sie als leer.
+export const STAND_BLOECKE = ["kurszuordnung", "kursAlias", "klausurschnitt", "einstellungen"];
 
 export function leererSync() {
   return { letzterLauf: null, letzterErfolg: null, letzterFehler: null, quelle: null };
@@ -38,6 +44,8 @@ export function leererBestand() {
     kurszuordnung: {},
     sync: leererSync(),
     einstellungen: standardEinstellungen(),
+    geloescht: {},
+    staende: {},
   };
 }
 
@@ -148,8 +156,11 @@ export function pruefeBestand(obj) {
       id, kurs: e.kurs, datum: e.datum, thema, hausaufgabe, position,
       ersterfasst: typeof e.ersterfasst === "string" ? e.ersterfasst : null,
       geaendert: typeof e.geaendert === "string" ? e.geaendert : null,
+      ...(typeof e.geaendertUm === "string" && ZEITSTEMPEL.test(e.geaendertUm) ? { geaendertUm: e.geaendertUm } : {}),
     });
   }
+  const zeiten = (o, erlaubt) => Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {})
+    .filter(([k, v]) => (!erlaubt || erlaubt.includes(k)) && typeof v === "string" && ZEITSTEMPEL.test(v)));
   return {
     schemaVersion: SCHEMA_VERSION,
     letzterAbruf: typeof obj.letzterAbruf === "string" ? obj.letzterAbruf : null,
@@ -160,6 +171,8 @@ export function pruefeBestand(obj) {
     kurszuordnung: pruefeKurszuordnung(obj.kurszuordnung),
     sync: pruefeSync(obj.sync, obj.schemaVersion === 1 && typeof obj.letzterAbruf === "string" ? obj.letzterAbruf : null),
     einstellungen: pruefeEinstellungen(obj.einstellungen),
+    geloescht: zeiten(obj.geloescht, null),
+    staende: zeiten(obj.staende, STAND_BLOECKE),
   };
 }
 

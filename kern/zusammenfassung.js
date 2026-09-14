@@ -69,6 +69,23 @@ export function faecherZusammenfassung(bestand) {
   return offen ? `${n} · ${offen} nicht zugeordnet` : n;
 }
 
+const zweistellig = (n) => String(n).padStart(2, "0");
+
+/**
+ * Übersichtszeile „Abgleich“: „Aus“, „Ein“, „Ein · zuletzt heute 14:02“, mit „wartet auf
+ * Verbindung“, oder „Letzter Abgleich fehlgeschlagen“. Uhrzeit in Ortszeit von jetzt.
+ */
+export function abgleichZusammenfassung(status, jetzt) {
+  if (!status) return "Aus";
+  if (status.fehler) return "Letzter Abgleich fehlgeschlagen";
+  const wartet = status.ausstehend ? " · wartet auf Verbindung" : "";
+  if (!status.letzter) return `Ein${wartet}`;
+  const t = new Date(status.letzter);
+  const tage = Math.round((new Date(jetzt.getFullYear(), jetzt.getMonth(), jetzt.getDate()) - new Date(t.getFullYear(), t.getMonth(), t.getDate())) / 864e5);
+  const tag = tage === 0 ? "heute" : tage === 1 ? "gestern" : `am ${zweistellig(t.getDate())}.${zweistellig(t.getMonth() + 1)}.`;
+  return `Ein · zuletzt ${tag} ${zweistellig(t.getHours())}:${zweistellig(t.getMinutes())}${wartet}`;
+}
+
 /** Übersichtszeile „Daten“: „27 Einträge“ oder „Noch keine Einträge“. */
 export function datenZusammenfassung(bestand) {
   const n = bestand.eintraege.length;

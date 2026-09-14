@@ -2,7 +2,9 @@
 // quellen/. Es wird nichts per innerHTML eingefügt — Texte aus den Daten laufen immer durch
 // textContent bzw. createTextNode.
 
-import { lesen, schreiben, loeschen, defektSichern, exportText, exportDateiname, leererBestand } from "../kern/speicher.js";
+import { lesen, schreiben, loeschen, defektSichern, exportText, exportDateiname, leererBestand, STAND_BLOECKE } from "../kern/speicher.js";
+import { stabil, zusammenfuehren, aenderungenStempeln } from "../kern/abgleich.js";
+import { geheimnisErzeugen, istGeheimnis, ableiten } from "../kern/verschluesselung.js";
 import { importieren } from "../kern/importieren.js";
 import { istEigen, eigenenEintragAnlegen, eigenenEintragAendern, eigenenEintragLoeschen, eigeneEintraege } from "../kern/mergen.js";
 import {
@@ -14,11 +16,12 @@ import {
 } from "../kern/logik.js";
 import {
   kurseZusammenfassung, vorschauZusammenfassung, wochenplanZusammenfassung, freieTageZusammenfassung,
-  faecherImStundenplan, faecherZusammenfassung, datenZusammenfassung,
+  faecherImStundenplan, faecherZusammenfassung, datenZusammenfassung, abgleichZusammenfassung,
 } from "../kern/zusammenfassung.js";
 import { SCHULMANAGER_ORIGIN } from "../quellen/quelle.js";
 import { DateiQuelle } from "../quellen/dateiQuelle.js";
 import { EmpfangsQuelle } from "../quellen/empfangsQuelle.js";
+import { Ablage, AblageFehler, abgleichen, ablageEingerichtet } from "../quellen/ablage.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -75,18 +78,36 @@ function laden() {
   const { bestand, fehler, migriert } = lesen(storage);
   zustand.bestand = bestand;
   zustand.speicherFehler = fehler;
+  gespeichert = kopie(bestand);
+  abgleich.status = abgleichLesen();
   if (fehler) defektSichern(storage);
   else if (migriert) speichern();   // Schema 1 → 2 einmal zurückschreiben
   zustand.ansicht = bestand.einstellungen.startReiter === "vorschau" ? "vorschau" : "archiv";
   zustand.vorher = zustand.ansicht;
 }
 
+// Zuletzt geschriebener Bestand als Kopie. speichern() vergleicht damit und stempelt Änderungen
+// für den Abgleich (aenderungenStempeln), bevor es schreibt.
+let gespeichert = null;
+const kopie = (b) => JSON.parse(JSON.stringify(b));
+
 function speichern() {
   if (!storage) return;
+  // Object.assign statt Ersetzen: Einstellungsseiten halten Verweise auf zustand.bestand.
+  Object.assign(zustand.bestand, aenderungenStempeln(gespeichert, zustand.bestand, new Date().toISOString()));
+  if (bestandSchreiben()) abgleichPlanen();
+}
+
+/** Schreibt ohne zu stempeln, z. B. was aus der Ablage kommt. → true bei Erfolg */
+function bestandSchreiben() {
+  if (!storage) return false;
   try {
     schreiben(storage, zustand.bestand);
+    gespeichert = kopie(zustand.bestand);
+    return true;
   } catch (e) {
     melden("fehler", `Speichern fehlgeschlagen: ${e.message}. Bitte jetzt exportieren.`);
+    return false;
   }
 }
 
@@ -780,7 +801,8 @@ function renderEintragen() {
     const best = zustand.bestand;
     let r;
     try {
-      r = alt ? eigenenEintragAendern(best.eintraege, alt.id, felder, heuteIso()) : eigenenEintragAnlegen(best.eintraege, felder, heuteIso());
+      const jetzt = new Date().toISOString();
+      r = alt ? eigenenEintragAendern(best.eintraege, alt.id, felder, heuteIso(), jetzt) : eigenenEintragAnlegen(best.eintraege, felder, heuteIso(), jetzt);
     } catch (fehler) {
       melden("fehler", fehler.message);
       return;
@@ -862,6 +884,7 @@ function renderEinstellungen() {
   if (thema === "vorschau" && unter === "faecher") return seiteFaecher(box);
   if (thema === "vorschau") return seiteVorschau(box);
   if (thema === "daten") return seiteDaten(box);
+  if (thema === "abgleich") return seiteAbgleich(box);
   return seiteUebersicht(box);
 }
 
@@ -924,6 +947,10 @@ function seiteUebersicht(box) {
     zeile("Kurse", kurseZusammenfassung(bestand), () => seiteOeffnen(["kurse"])),
     zeile("Vorschau", vorschauZusammenfassung(einst), () => seiteOeffnen(["vorschau"])),
     zeile("Daten", datenZusammenfassung(bestand), () => seiteOeffnen(["daten"])),
+    abgleichMoeglich()
+      ? zeile("Abgleich", abgleichZusammenfassung(abgleich.status, new Date()), () => seiteOeffnen(["abgleich"]),
+        { klasse: abgleich.status && abgleich.status.fehler ? "warn" : "" })
+      : null,
   ));
   box.append(gruppe(zeile("Archiv löschen", null, archivLoeschen, { pfeil: false, klasse: "gefahr" })));
 }
@@ -1083,6 +1110,178 @@ function seiteDaten(box) {
   box.append(el("p", { text: "Das Lesezeichen holt die Daten aus dem eingeloggten Schulmanager-Tab." }));
 }
 
+// ---------------------------------------------------------------------------
+// Abgleich zwischen Geräten: Ablage in Firestore (quellen/ablage.js), Zusammenführen in
+// kern/abgleich.js. Das Geheimnis liegt unter eigenem Schlüssel, nie im Bestand oder Export.
+// ---------------------------------------------------------------------------
+
+const ABGLEICH_KEY = "unterrichtsarchiv:abgleich";
+const ABLAGE_FAST_VOLL = 700000;
+// status: { geheimnis, letzter, fehler: { art, text, zeit } | null, ausstehend, groesse } | null
+const abgleich = { status: null, schluessel: null, laeuft: false, nochmal: false, timer: null, gemeldet: null };
+
+const abgleichMoeglich = () => !!storage && ablageEingerichtet() && !!(globalThis.crypto && crypto.subtle);
+const eintraegeText = (n) => `${n} ${n === 1 ? "Eintrag" : "Einträge"}`;
+// Reihenfolge der Einträge egal: sortiert ablegen allein ist keine Änderung, die neu zeichnen muss.
+const kanonisch = (b) => stabil({ ...b, eintraege: [...b.eintraege].sort((p, q) => (p.id < q.id ? -1 : p.id > q.id ? 1 : 0)) });
+
+function abgleichLesen() {
+  try {
+    const s = JSON.parse(storage.getItem(ABGLEICH_KEY) || "null");
+    return s && istGeheimnis(s.geheimnis) ? s : null;
+  } catch {
+    return null;
+  }
+}
+
+function abgleichSchreiben(status) {
+  abgleich.status = status;
+  try {
+    if (status) storage.setItem(ABGLEICH_KEY, JSON.stringify(status));
+    else storage.removeItem(ABGLEICH_KEY);
+  } catch { /* ohne Speicher gilt der Status nur bis zum Neuladen */ }
+}
+
+function abgleichPlanen(verzoegerung = 2000) {
+  if (!abgleich.status) return;
+  clearTimeout(abgleich.timer);
+  abgleich.timer = setTimeout(() => abgleichStarten(), verzoegerung);
+}
+
+/** Einstellungen neu zeichnen, wenn dort gerade der Stand des Abgleichs zu sehen ist. */
+function abgleichStandZeigen() {
+  if (zustand.ansicht === "einstellungen" && (!zustand.seite.length || zustand.seite[0] === "abgleich")) renderEinstellungen();
+}
+
+/**
+ * Holt die Ablage, führt zusammen, legt ab. vonHand: Ergebnis immer melden; sonst nur Neues und
+ * echte Fehler, eine fehlende Verbindung wird still nachgeholt. text(neu) ersetzt die Erfolgsmeldung.
+ */
+async function abgleichStarten({ vonHand = false, text = null } = {}) {
+  const status = abgleich.status;
+  if (!status || !abgleichMoeglich()) return;
+  if (abgleich.laeuft) { abgleich.nochmal = true; return; }
+  abgleich.laeuft = true;
+  clearTimeout(abgleich.timer);
+  const vorher = stabil(zustand.bestand);
+  const jetzt = new Date().toISOString();
+  try {
+    if (!abgleich.schluessel || abgleich.schluessel.geheimnis !== status.geheimnis) {
+      abgleich.schluessel = { geheimnis: status.geheimnis, ...(await ableiten(status.geheimnis)) };
+    }
+    const { dokumentId, schluessel } = abgleich.schluessel;
+    const r = await abgleichen({ ablage: new Ablage(), dokumentId, schluessel, lokal: zustand.bestand, jetzt });
+    if (abgleich.status !== status) return;   // inzwischen beendet oder neu gekoppelt
+    let ergebnis = r.bestand;
+    if (stabil(zustand.bestand) !== vorher) {   // während des Abgleichs gespeichert: nichts davon verlieren
+      ergebnis = zusammenfuehren(zustand.bestand, ergebnis, jetzt).bestand;
+      abgleich.nochmal = true;
+    }
+    abgleich.gemeldet = null;
+    abgleichSchreiben({ ...status, letzter: jetzt, fehler: null, ausstehend: false, groesse: r.groesse });
+    const meldung = text ? text(r.neu)
+      : vonHand ? (r.neu ? `Abgeglichen: ${eintraegeText(r.neu)} vom anderen Gerät.` : "Abgeglichen.")
+        : r.neu ? `Vom anderen Gerät übernommen: ${eintraegeText(r.neu)}.` : null;
+    if (meldung) melden("ok", meldung);
+    if (kanonisch(ergebnis) !== kanonisch(zustand.bestand)) {
+      zustand.bestand = ergebnis;
+      bestandSchreiben();
+      render();
+    } else {
+      abgleichStandZeigen();
+    }
+  } catch (e) {
+    if (abgleich.status !== status) return;
+    const art = e instanceof AblageFehler ? e.art : "inhalt";
+    abgleichSchreiben({ ...status, ausstehend: true, fehler: art === "offline" ? null : { art, text: e.message, zeit: jetzt } });
+    if (vonHand || (art !== "offline" && abgleich.gemeldet !== art)) {
+      abgleich.gemeldet = art;
+      melden(art === "offline" ? "warn" : "fehler", `Abgleich: ${e.message}${art === "offline" ? " Er wird nachgeholt." : ""}`);
+    }
+    abgleichStandZeigen();
+  } finally {
+    abgleich.laeuft = false;
+    if (abgleich.nochmal) { abgleich.nochmal = false; abgleichPlanen(500); }
+  }
+}
+
+/** Kopplungslink (#koppeln=…) geöffnet: dieses Gerät mit der Ablage verbinden. → true, wenn der Link da war */
+function kopplungAusLink() {
+  const treffer = /^#koppeln=([A-Za-z0-9_-]{43})$/.exec(location.hash);
+  if (!treffer) return false;
+  history.replaceState(null, "", location.pathname + location.search);   // Geheimnis nicht in der Adresse lassen
+  const geheimnis = treffer[1];
+  if (!abgleichMoeglich()) { melden("fehler", "In diesem Browser ist kein Abgleich möglich."); return true; }
+  if (abgleich.status && abgleich.status.geheimnis === geheimnis) { abgleichStarten({ vonHand: true }); return true; }
+  if (abgleich.status && !window.confirm("Dieses Gerät ist schon mit einer anderen Ablage gekoppelt. Zur neuen wechseln? Die Einträge auf diesem Gerät bleiben.")) return true;
+  abgleichSchreiben({ geheimnis, letzter: null, fehler: null, ausstehend: true, groesse: 0 });
+  abgleich.gemeldet = null;
+  abgleichStarten({ vonHand: true, text: (neu) => `Gekoppelt. ${neu ? `${eintraegeText(neu)} vom anderen Gerät übernommen.` : "Die Geräte gleichen jetzt ab."}` });
+  return true;
+}
+
+function seiteAbgleich(box) {
+  seitenKopf(box, "Einstellungen", () => seiteOeffnen([]), "Abgleich");
+  const { status } = abgleich;
+  if (!abgleichMoeglich()) {
+    box.append(el("p", { text: "In diesem Browser ist kein Abgleich möglich." }));
+    return;
+  }
+  if (!status) {
+    box.append(el("p", { text: "Hält Einträge, Stundenplan und Einstellungen auf mehreren Geräten gleich. Die Daten liegen verschlüsselt im Internet. Lesen können sie nur gekoppelte Geräte." }));
+    box.append(gruppe(zeile("Ablage anlegen", "Auf dem Gerät, das schon Einträge und Einstellungen hat", ablageAnlegen, { pfeil: false })));
+    box.append(el("p", { text: "Danach den Link an das andere Gerät schicken und dort öffnen. Mehr ist nicht nötig." }));
+    return;
+  }
+  if (status.fehler) box.append(el("div", { class: "hinweis fehler" }, el("p", { text: status.fehler.text })));
+  box.append(gruppe(
+    zeile("Anderes Gerät koppeln", "Link per AirDrop oder Nachricht schicken", kopplungTeilen, { pfeil: false }),
+    zeile("Jetzt abgleichen", abgleichZusammenfassung(status, new Date()), () => abgleichStarten({ vonHand: true }), { pfeil: false }),
+  ));
+  box.append(el("p", { text: "Den Link auf dem anderen Gerät öffnen. Wer den Link hat, kann die Einträge lesen. Deshalb nur an eigene Geräte schicken." }));
+  if (status.groesse > ABLAGE_FAST_VOLL) box.append(el("p", { text: "Die Ablage ist fast voll. Bitte melden, dann wird sie aufgeteilt." }));
+  box.append(gruppe(zeile("Abgleich auf diesem Gerät beenden", null, abgleichBeenden, { pfeil: false, klasse: "gefahr" })));
+  box.append(el("p", { text: "Die Einträge auf diesem Gerät bleiben. Die anderen Geräte gleichen weiter ab." }));
+}
+
+function ablageAnlegen() {
+  const jetzt = new Date().toISOString();
+  // Alle Blöcke stempeln: beim ersten Koppeln gibt dieses Gerät Anzeigenamen und Einstellungen vor.
+  zustand.bestand.staende = Object.fromEntries(STAND_BLOECKE.map((b) => [b, jetzt]));
+  bestandSchreiben();
+  abgleichSchreiben({ geheimnis: geheimnisErzeugen(), letzter: null, fehler: null, ausstehend: true, groesse: 0 });
+  abgleich.gemeldet = null;
+  renderEinstellungen();
+  abgleichStarten({ vonHand: true, text: () => "Ablage angelegt. Jetzt „Anderes Gerät koppeln“ antippen." });
+}
+
+async function kopplungTeilen() {
+  const url = new URL(`./#koppeln=${abgleich.status.geheimnis}`, location.href).href;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Unterrichtsarchiv koppeln", url });
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return;   // Teilen abgebrochen
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    melden("ok", "Link kopiert. Auf dem anderen Gerät öffnen.");
+  } catch {
+    window.prompt("Diesen Link auf dem anderen Gerät öffnen:", url);
+  }
+}
+
+function abgleichBeenden() {
+  if (!window.confirm("Abgleich auf diesem Gerät beenden? Die Einträge hier bleiben. Neu koppeln geht mit dem Link von einem gekoppelten Gerät.")) return;
+  clearTimeout(abgleich.timer);
+  abgleichSchreiben(null);
+  abgleich.schluessel = null;
+  melden("ok", "Abgleich auf diesem Gerät beendet.");
+  renderEinstellungen();
+}
+
 function overrideSetzen(tag, kurs, wert) {
   const overrides = zustand.bestand.einstellungen.wochenplan.overrides;
   if (wert) {
@@ -1112,9 +1311,13 @@ function exportieren() {
 
 function archivLoeschen() {
   const n = zustand.bestand.eintraege.length;
-  if (!window.confirm(`Wirklich alle ${n} Einträge löschen? Anzeigenamen, Klausurdaten und Einstellungen gehen mit. Vorher exportieren, falls noch nicht geschehen.`)) return;
+  // Mit Abgleich endet er auf diesem Gerät, sonst käme beim nächsten Abgleich alles zurück.
+  const mitAbgleich = abgleich.status ? " Der Abgleich auf diesem Gerät endet, die anderen Geräte behalten ihre Daten." : "";
+  if (!window.confirm(`Wirklich alle ${n} Einträge löschen? Anzeigenamen, Klausurdaten und Einstellungen gehen mit. Vorher exportieren, falls noch nicht geschehen.${mitAbgleich}`)) return;
   if (storage) loeschen(storage);
+  if (abgleich.status) { clearTimeout(abgleich.timer); abgleichSchreiben(null); abgleich.schluessel = null; }
   zustand.bestand = leererBestand();
+  gespeichert = kopie(zustand.bestand);
   zustand.filter = FILTER_LEER();
   zustand.filterOffen = false;
   zustand.monatAuf = {};
@@ -1159,12 +1362,19 @@ function verdrahten() {
   for (const quelle of [dateiQuelle, empfangsQuelle]) {
     if (quelle.verfuegbar()) quelle.starten(callbacks);
   }
+
+  // Abgleich nur zu diesen Anlässen, kein Takt: Zurückwechseln in den Tab, Safari holt die Seite
+  // aus dem Verlauf-Cache, Netz ist wieder da.
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") abgleichStarten(); });
+  window.addEventListener("pageshow", (e) => { if (e.persisted) abgleichStarten(); });
+  window.addEventListener("online", () => abgleichStarten());
 }
 
 laden();
 verdrahten();
 render();
 if (zustand.speicherFehler) melden("fehler", zustand.speicherFehler);
+if (!kopplungAusLink()) abgleichStarten();
 
 const lokal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 const parameter = new URLSearchParams(location.search);

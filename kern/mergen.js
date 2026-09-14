@@ -29,6 +29,7 @@ export function mergen(bestand, zeilen, heute) {
         id: z.id, kurs: z.kurs, datum: z.datum, thema, hausaufgabe, position: z.position,
         ersterfasst: z.ersterfasst || heute,
         geaendert: z.geaendert || null,
+        ...(z.geaendertUm ? { geaendertUm: z.geaendertUm } : {}),
       });
       neu++;
       continue;
@@ -65,16 +66,19 @@ function eigeneFelder({ kurs, datum, hausaufgabe } = {}) {
   return { kurs, datum, hausaufgabe: text };
 }
 
-function naechstePosition(eintraege, kurs, datum) {
+// Mit jetzt (ISO-Zeitstempel) wird die Position aus den Millisekunden gebildet, damit zwei Geräte
+// beim Abgleich nie dieselbe ID vergeben. Ohne jetzt wird je Kurs und Tag ab 1001 gezählt.
+function naechstePosition(eintraege, kurs, datum, jetzt) {
   let p = EIGENE_POSITION_AB - 1;
   for (const e of eintraege) if (e.kurs === kurs && e.datum === datum && istEigen(e)) p = Math.max(p, e.position);
-  return p + 1;
+  const ms = jetzt ? Date.parse(jetzt) : NaN;
+  return Number.isSafeInteger(ms) ? Math.max(p + 1, ms) : p + 1;
 }
 
 /** → { eintraege, eintrag }. Wirft bei fehlendem Kurs, Datum oder Text. */
-export function eigenenEintragAnlegen(eintraege, felder, heute) {
+export function eigenenEintragAnlegen(eintraege, felder, heute, jetzt) {
   const f = eigeneFelder(felder);
-  const position = naechstePosition(eintraege, f.kurs, f.datum);
+  const position = naechstePosition(eintraege, f.kurs, f.datum, jetzt);
   const eintrag = {
     id: `${f.kurs}|${f.datum}|${position}`, kurs: f.kurs, datum: f.datum, thema: "", hausaufgabe: f.hausaufgabe,
     position, ersterfasst: heute, geaendert: null,
@@ -86,7 +90,7 @@ export function eigenenEintragAnlegen(eintraege, felder, heute) {
  * → { eintraege, eintrag }. Gleicher Kurs und Tag: Text ersetzen. Sonst zieht der Eintrag unter
  * einen neuen Schlüssel um, ersterfasst bleibt. Wirft, wenn die ID fehlt oder nicht eigen ist.
  */
-export function eigenenEintragAendern(eintraege, id, felder, heute) {
+export function eigenenEintragAendern(eintraege, id, felder, heute, jetzt) {
   const alt = eintraege.find((e) => e.id === id);
   if (!istEigen(alt)) throw new Error("Nur selbst eingetragene Einträge lassen sich ändern.");
   const f = eigeneFelder(felder);
@@ -96,7 +100,7 @@ export function eigenenEintragAendern(eintraege, id, felder, heute) {
     return { eintraege: eintraege.map((e) => (e.id === id ? eintrag : e)), eintrag };
   }
   const rest = eintraege.filter((e) => e.id !== id);
-  const position = naechstePosition(rest, f.kurs, f.datum);
+  const position = naechstePosition(rest, f.kurs, f.datum, jetzt);
   const eintrag = {
     ...alt, id: `${f.kurs}|${f.datum}|${position}`, kurs: f.kurs, datum: f.datum, hausaufgabe: f.hausaufgabe,
     position, geaendert: heute,

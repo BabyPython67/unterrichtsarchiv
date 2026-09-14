@@ -13,6 +13,8 @@ test("leererBestand hat das Schema aus Dispatch §5 plus die v3-Felder aus §4",
       wochenplan: { fensterTage: 56, overrides: {} }, freieTage: [], schulbeginn: "08:00",
       altSchwelleTage: 21, stundenplanStaleTage: 7, startReiter: "archiv", syncWarnungNachTagen: 3,
     },
+    geloescht: {},
+    staende: {},
   });
 });
 

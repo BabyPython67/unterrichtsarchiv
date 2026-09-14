@@ -4,8 +4,12 @@ Eigenständiges Projekt, nicht verwandt mit anderen Repos im Workspace.
 
 ## Regeln, die nicht verhandelbar sind
 
-- Kein Server, kein Backend, keine Entgegennahme von Schulmanager-Passwörtern. Das Bookmarklet
-  nutzt nur die bestehende Session im eingeloggten Tab.
+- Kein eigener Server, keine Entgegennahme von Schulmanager-Passwörtern. Das Bookmarklet nutzt
+  nur die bestehende Session im eingeloggten Tab.
+- Einziger Online-Speicher ist die Ablage für den Abgleich zwischen Geräten (Firestore,
+  `quellen/ablage.js`). Dorthin geht der Bestand nur Ende-zu-Ende-verschlüsselt
+  (`kern/verschluesselung.js`). Das Geheimnis liegt unter eigenem Schlüssel im localStorage, nie
+  im Bestand, im Export oder in einer URL, außer im Fragment des Kopplungslinks.
 - Das Repo ist öffentlich und enthält nur Code. Keine Nutzerdaten, keine Schüler-IDs, keine
   Namen. Die Fixtures in `referenz/` sind anonymisiert (Schüler-ID = 0).
 - Ein Abruf pro Klick. Kein Polling, keine Retry-Schleifen, bei HTTP 429 abbrechen.
@@ -18,7 +22,10 @@ Eigenständiges Projekt, nicht verwandt mit anderen Repos im Workspace.
   ist ein Cache, ein neuer Abruf ersetzt die Tage im Fenster vollständig. Nie vermischen.
 - Einzige Ausnahme vom Schrumpfen: selbst eingetragene Einträge (`position` ab 1001, siehe
   `kern/mergen.js`). Nur sie lassen sich in der App ändern und löschen, Einträge aus dem
-  Schulmanager nie.
+  Schulmanager nie. Gelöschte eigene Einträge hinterlassen einen Grabstein (`geloescht`), damit
+  das Löschen beim Abgleich auf den anderen Geräten ankommt.
+- Zusammenführen zweier Bestände nur in `kern/abgleich.js` (`zusammenfuehren`). Stempel für den
+  Abgleich setzt nur `aenderungenStempeln` beim Speichern, nie Code in `ui/` von Hand.
 - Digest-Logik nur in `kern/logik.js` (`baueDigest`). Viewer und spätere Kurzbefehle nutzen
   dieselbe Funktion, keine zweite Implementierung.
 

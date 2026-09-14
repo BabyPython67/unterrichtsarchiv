@@ -3,7 +3,8 @@
 Wie die App funktioniert, wie sie gebaut und geprüft wird. Für die Benutzung reicht die
 [README](../README.md).
 
-- Kein Server, kein Konto, kein Passwort. Die Daten liegen nur im Browser des Nutzers.
+- Kein eigener Server, kein Konto, kein Passwort. Die Daten liegen im Browser des Nutzers, mit
+  eingeschaltetem Abgleich zusätzlich verschlüsselt in einer Ablage (Firestore).
 - Ein Lesezeichen (Bookmarklet) holt die Daten aus dem Tab, in dem man ohnehin eingeloggt ist.
 - Der Viewer läuft als statische Seite auf GitHub Pages und enthält nur Code, keine Daten.
 
@@ -74,7 +75,7 @@ dem Formular stehen die fünf neuesten eigenen Einträge. Im Archiv tragen eigen
 Meta-Zeile. Ändern und Löschen gibt es nur für eigene Einträge.
 
 **Einstellungen.** Eine Übersicht mit einer Zeile je Thema (Beim Öffnen, Kurse, Vorschau,
-Daten), jeweils mit dem aktuellen Stand darunter. Details stehen auf Unterseiten.
+Daten, Abgleich), jeweils mit dem aktuellen Stand darunter. Details stehen auf Unterseiten.
 
 ## Schultag-Vorschau
 
@@ -119,12 +120,82 @@ die leise Abrufzeile. Er und der rote Fehlerhinweis haben den Link zum Schulmana
 User-Agent). Die Stand-Zeile oben zählt die gehaltenen Schulstunden seit dem letzten Abruf
 (`stundenSeitAbruf`); reicht der Stundenplan nicht bis heute, heißt es „mehr als“.
 
+## Abgleich zwischen Geräten
+
+Optional, unter Einstellungen → Abgleich. Ein Gerät legt die Ablage an und schickt den
+Kopplungslink an die anderen Geräte (`navigator.share`, sonst Zwischenablage). Danach gleichen alle
+gekoppelten Geräte über ein Dokument in Firestore ab.
+
+**Schlüssel.** `geheimnisErzeugen` liefert 32 Zufallsbytes (base64url, 43 Zeichen). Per
+HKDF-SHA-256 (`ableiten` in `kern/verschluesselung.js`) ergeben sich daraus die Dokument-ID
+(64 Hex-Zeichen) und ein AES-GCM-Schlüssel (256 Bit). Das Geheimnis liegt im localStorage unter
+`unterrichtsarchiv:abgleich`, zusammen mit dem Stand des letzten Abgleichs, nie im Bestand und nie
+im Export. Der Kopplungslink trägt es im Fragment (`#koppeln=…`), das der Browser nicht an GitHub
+schickt; der Viewer entfernt es nach dem Lesen per `history.replaceState`. Wer den Link hat, kann
+die Ablage lesen und schreiben.
+
+**Ablage.** Firestore-Projekt `daten-ablage---u-archiv`, Datenbank `(default)` in `europe-west3`,
+Spark-Tarif ohne Zahlungsmittel. `quellen/ablage.js` spricht die REST-Schnittstelle ohne SDK an.
+Ein Dokument `ablagen/<Dokument-ID>` mit genau drei Feldern: `daten` (base64url von AES-GCM über ein
+Formatbyte und das gzip-JSON des ganzen Bestands), `iv` und `version`. Firestore sieht nur
+Chiffretext, Größe und Zeitpunkte. Geschrieben wird mit Vorbedingung (`currentDocument.updateTime`
+bzw. `exists=false`). Hat ein anderes Gerät dazwischen geschrieben, holt `abgleichen` neu, führt
+zusammen und versucht es bis zu dreimal. Unveränderte Stände werden nicht erneut geschrieben. Über
+900 000 Zeichen wird nicht geschrieben (Firestore erlaubt 1 MiB je Dokument), ab 700 000 warnt die
+Seite Abgleich.
+
+Regeln in der Firebase-Konsole:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /ablagen/{id} {
+      allow get, delete: if id.size() == 64;
+      allow create, update: if id.size() == 64
+        && request.resource.data.keys().hasOnly(['daten', 'iv', 'version'])
+        && request.resource.data.daten is string
+        && request.resource.data.daten.size() < 900000;
+      allow list: if false;
+    }
+  }
+}
+```
+
+Projekt-ID und API-Schlüssel stehen in `quellen/ablage.js`. Bei Firebase sind sie nicht geheim,
+geschützt wird über die Regeln. Live geprüft am 2026-09-14: Anlegen und Lesen, veralteter Stand
+abgewiesen (400 FAILED_PRECONDITION), Auflisten, kurze IDs und Zusatzfelder verboten (403).
+
+**Zusammenführen** (`zusammenfuehren` in `kern/abgleich.js`, Ergebnis unabhängig von der Reihenfolge):
+
+- Einträge aus dem Schulmanager: vereinigen. Ein leeres Feld überschreibt nie, bei abweichendem
+  Text gewinnt das jüngere `geaendert`. Das Archiv schrumpft nie.
+- Eigene Einträge: das jüngere `geaendertUm` gewinnt. Gelöschte hinterlassen in `geloescht` einen
+  Grabstein, der ältere Stände schlägt. Grabsteine über 180 Tage fallen weg.
+- Stundenplan: das Fenster des jüngeren Abrufs ersetzt die Tage des älteren (`stundenplanUebernehmen`).
+- `kurszuordnung` je Fach, manuell schlägt automatisch. `kursAlias`, `klausurschnitt` und
+  `einstellungen` kommen als Ganzes vom Gerät mit dem jüngeren Stand in `staende`. Ohne Stand auf
+  beiden Seiten werden die Schlüssel vereinigt. „Ablage anlegen“ setzt alle Stände, damit beim
+  ersten Koppeln das anlegende Gerät die Einstellungen vorgibt.
+- `letzterAbruf` und `sync`: jeweils der jüngste Zeitpunkt; ein Fehler vor dem letzten Erfolg fällt weg.
+
+Stempel setzt niemand von Hand: `speichern()` vergleicht mit dem zuletzt geschriebenen Bestand
+(`aenderungenStempeln`) und stempelt neue oder geänderte eigene Einträge, verschwundene eigene
+Einträge und geänderte Blöcke. Was aus der Ablage kommt, wird ohne Stempel geschrieben.
+
+**Wann.** Beim Öffnen, beim Zurückwechseln in den Tab (`visibilitychange`, `pageshow`), wenn das
+Netz zurückkommt, und zwei Sekunden nach jedem Speichern. Kein Takt, keine Schleife. Ohne
+Verbindung steht „wartet auf Verbindung“ in der Übersicht, nachgeholt wird beim nächsten Anlass.
+Andere Fehler stehen rot auf der Seite Abgleich und werden einmal gemeldet. „Archiv löschen“
+beendet den Abgleich auf diesem Gerät, sonst käme alles aus der Ablage zurück.
+
 ## Aufbau
 
 ```
 kern/          reine Logik ohne Browser-Zugriff: Erkennung, Normalisierung, Merge, Filter, Speicher,
-               Schultag-Vorschau (logik.js: Wochenplan, nächster Schultag, Digest, Statuszeilen)
-quellen/       Abrufschicht: Empfang per postMessage, Datei-Import (austauschbar)
+               Schultag-Vorschau (logik.js: Wochenplan, nächster Schultag, Digest, Statuszeilen),
+               Abgleich (abgleich.js: Zusammenführen, Stempel), Verschlüsselung (WebCrypto)
+quellen/       Abrufschicht: Empfang per postMessage, Datei-Import (austauschbar), Firestore-Ablage
 ui/            Viewer-Oberfläche
 bookmarklet/   Quelle (src.js, helfer.js) und gebauter Einzeiler (bookmarklet.js) des Lesezeichens
 referenz/      echte, anonymisierte API-Antworten als Testdaten
@@ -162,13 +233,18 @@ Lesen migriert und einmal zurückgeschrieben.
 
 ```
 schemaVersion, letzterAbruf, kursAlias, klausurschnitt,
-eintraege[]:   { id, kurs, datum, thema, hausaufgabe, position, ersterfasst, geaendert }
+eintraege[]:   { id, kurs, datum, thema, hausaufgabe, position, ersterfasst, geaendert, geaendertUm? }
 stundenplan:   { abgerufenAm, fenster: { von, bis }, tage: { "JJJJ-MM-TT": [ { stunde, fach, raum, status } ] } }
 kurszuordnung: { "<Fach im Stundenplan>": { kurs, quelle: "auto" | "manuell", bestaetigt } }
 sync:          { letzterLauf, letzterErfolg, letzterFehler: { zeit, art, text }, quelle }
 einstellungen: { wochenplan: { fensterTage, overrides }, freieTage, schulbeginn, altSchwelleTage,
                  stundenplanStaleTage, startReiter, syncWarnungNachTagen }
+geloescht:     { "<id>": Zeitpunkt }      Grabsteine gelöschter eigener Einträge (Abgleich)
+staende:       { kurszuordnung?, kursAlias?, klausurschnitt?, einstellungen?: Zeitpunkt }
 ```
+
+`geaendertUm`, `geloescht` und `staende` kamen mit dem Abgleich dazu, ohne neue Schema-Version:
+Fehlen sie, gelten sie als leer. `geaendertUm` tragen nur eigene Einträge.
 
 `id` ist `kurs|datum|position`. Schulmanager liefert keine Stundennummer, nur „Inhalt an
 diesem Tag". `position` ist deshalb eine laufende Nummer je Kurs und Tag in Lieferreihenfolge
@@ -189,8 +265,9 @@ der ist mit dem Kursnamen aus dem Klassenbuch identisch, deshalb passt die Zuord
 selbst. `kurs: null` in `kurszuordnung` heißt „nicht anzeigen“.
 
 Der Export enthält Archiv, Alias, Klausurschnitte und Einstellungen, aber weder den
-Stundenplan-Cache noch den Sync-Status. Beim Import einer Export-Datei gewinnen bei den
-Einstellungen die lokalen Werte; freie Tage werden vereinigt.
+Stundenplan-Cache noch den Sync-Status. Grabsteine und Stände kommen mit, das Kopplungsgeheimnis
+nie. Beim Import einer Export-Datei gewinnen bei den Einstellungen die lokalen Werte; freie Tage
+werden vereinigt.
 
 ## Merge-Regeln
 
@@ -199,9 +276,10 @@ Text ersetzen und `geaendert` setzen, fehlende Einträge behalten. Das Archiv sc
 Ein leeres Feld in der Antwort überschreibt keinen gespeicherten Text.
 
 Einzige Ausnahme vom Schrumpfen: eigene Einträge lassen sich ändern und löschen. Ändern mit
-anderem Kurs oder Tag legt den Eintrag unter neuem Schlüssel an, `ersterfasst` bleibt. Bekannte
-Grenze: Legen zwei Geräte am selben Tag für denselben Kurs je einen eigenen Eintrag an, haben beide
-die ID `…|1001`. Beim Import einer Export-Datei ersetzt dann der eine Text den anderen.
+anderem Kurs oder Tag legt den Eintrag unter neuem Schlüssel an, `ersterfasst` bleibt. Neue eigene
+Einträge bekommen als `position` die Millisekunden des Anlegens, zwei Geräte vergeben also nie
+dieselbe ID. Ältere Einträge mit 1001, 1002 … bleiben gültig. Haben zwei Geräte dieselbe alte ID
+mit verschiedenem Text, behält der Abgleich beide.
 
 Bekannte Grenze des Schlüssels: löscht die Lehrkraft den ersten von zwei Einträgen eines
 Tages, rückt der zweite auf Position 1 (erscheint als geändert) und Position 2 bleibt als
@@ -238,5 +316,6 @@ Weiter offen:
 
 ## Rahmen
 
-Ein Abruf pro Klick, kein Hintergrund-Sync. Anwesenheiten, Noten, Lehrkräfte und Namen von
+Ein Abruf im Schulmanager pro Klick, kein Hintergrund-Sync. Der Abgleich zwischen Geräten läuft
+nur zu festen Anlässen (Öffnen, Zurückwechseln, Speichern), nie in einer Schleife. Anwesenheiten, Noten, Lehrkräfte und Namen von
 Mitschülern werden nie gespeichert.

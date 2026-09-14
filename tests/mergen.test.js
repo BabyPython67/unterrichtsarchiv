@@ -132,6 +132,21 @@ test("eigene Einträge: Einträge aus dem Schulmanager lassen sich weder ändern
   assert.deepEqual(eigenenEintragLoeschen(alt, "Chemie|2026-09-14|1"), alt);
 });
 
+test("eigene Einträge mit Uhrzeit: Position aus Millisekunden, zwei Geräte vergeben verschiedene IDs", () => {
+  const t = "2026-09-14T08:00:00.000Z";
+  const a = eigenenEintragAnlegen([], felder("Chemie", "2026-09-14", "S. 45"), "2026-09-14", t);
+  assert.equal(a.eintrag.position, Date.parse(t));
+  assert.ok(istEigen(a.eintrag));
+  const b = eigenenEintragAnlegen([], felder("Chemie", "2026-09-14", "S. 46"), "2026-09-14", "2026-09-14T08:00:00.001Z");
+  assert.notEqual(a.eintrag.id, b.eintrag.id);
+  const c = eigenenEintragAnlegen(a.eintraege, felder("Chemie", "2026-09-14", "x"), "2026-09-14", t);
+  assert.equal(c.eintrag.position, a.eintrag.position + 1, "gleiche Millisekunde: trotzdem eindeutig");
+  const um = eigenenEintragAendern(a.eintraege, a.eintrag.id, felder("Physik", "2026-09-15", "S. 45"), "2026-09-15", "2026-09-15T09:00:00.000Z");
+  assert.equal(um.eintrag.position, Date.parse("2026-09-15T09:00:00.000Z"));
+  const gemergt = mergen([], [{ ...a.eintrag, geaendertUm: t }], "2026-09-14").eintraege[0];
+  assert.equal(gemergt.geaendertUm, t, "Import aus Export-Datei behält geaendertUm");
+});
+
 test("eigene Einträge: löschen entfernt nur den einen; eigeneEintraege neuestes Datum zuerst", () => {
   let r = eigenenEintragAnlegen([lehrkraft("Chemie", "2026-09-14")], felder("Chemie", "2026-09-11", "a"), "2026-09-11");
   r = eigenenEintragAnlegen(r.eintraege, felder("Chemie", "2026-09-14", "b"), "2026-09-14");
