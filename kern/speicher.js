@@ -126,6 +126,7 @@ function pruefeEinstellungen(o) {
       .filter((f) => typeof f === "string" && DATUM_BEREICH.test(f)))].sort();
   }
   if (UHRZEIT.test(o.schulbeginn || "")) e.schulbeginn = o.schulbeginn;
+  if (UHRZEIT.test(o.erinnerungAb || "")) e.erinnerungAb = o.erinnerungAb;
   e.altSchwelleTage = zahl(o.altSchwelleTage, e.altSchwelleTage);
   e.stundenplanStaleTage = zahl(o.stundenplanStaleTage, e.stundenplanStaleTage);
   e.syncWarnungNachTagen = zahl(o.syncWarnungNachTagen, e.syncWarnungNachTagen);

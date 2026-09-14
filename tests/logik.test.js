@@ -7,7 +7,7 @@ import {
   tagesplan, ermittleWochenplan, naechsterSchultag, schultagSuchen, letzteStunde, baueDigest,
   digestKopfzeile, tagesablauf, digestText, stundenplanUebernehmen, leererStundenplan, planFunktion, kurszuordnungErgaenzen,
   istFrei, istWochenende, datumPlus, tageZwischen, wochentagKuerzel, syncStatus, syncZeile, herkunftZeile, mitStandard,
-  abrufStand, stundenSeitAbruf, stundenSeitAbrufText, lueckeText, eintragDatum, kurseZumEintragen, kurseOhneHausaufgabe,
+  abrufStand, stundenSeitAbruf, stundenSeitAbrufText, erinnerung, lueckeText, eintragDatum, kurseZumEintragen, kurseOhneHausaufgabe,
 } from "../kern/logik.js";
 import { leererBestand, pruefeBestand, exportText } from "../kern/speicher.js";
 import { importieren } from "../kern/importieren.js";
@@ -451,6 +451,38 @@ test("stundenSeitAbruf: gehaltene Schulstunden nach dem Abruf, ohne Entfall, „
   b.einstellungen.freieTage = ["2026-09-15"];
   assert.deepEqual(stundenSeitAbruf(new Date(2026, 8, 16, 20, 0), b), { anzahl: 4, mehr: false });
   assert.equal(stundenSeitAbruf(new Date(2026, 8, 16, 20, 0), leererBestand()), null);
+});
+
+test("erinnerung: erst nach Schulschluss, frühere Tage sofort; Fehler immer; ohne Stundenplan nach Tagen", () => {
+  const b = lueckeDaten();   // Abruf Mo 14.09. 18:00
+  const warn = (text) => ({ art: "warn", text });
+  // Di 10:00: Englisch am Dienstag zählt erst ab 15:00
+  assert.equal(erinnerung(new Date(2026, 8, 15, 10, 0), b), null);
+  assert.deepEqual(erinnerung(new Date(2026, 8, 15, 15, 0), b), warn("Seit dem Abruf am Mo 14.09. war 1 Schulstunde."));
+  // Mi 07:00: der Dienstag ist vorbei und zählt sofort
+  assert.deepEqual(erinnerung(new Date(2026, 8, 16, 7, 0), b), warn("Seit dem Abruf am Mo 14.09. war 1 Schulstunde."));
+  assert.deepEqual(erinnerung(new Date(2026, 8, 16, 20, 0), b), warn("Seit dem Abruf am Mo 14.09. waren 5 Schulstunden."));
+  assert.deepEqual(erinnerung(new Date(2026, 8, 21, 9, 0), b), warn("Seit dem Abruf am Mo 14.09. waren 5 Schulstunden."));
+  assert.deepEqual(erinnerung(new Date(2026, 8, 21, 16, 0), b), warn("Seit dem Abruf am Mo 14.09. waren mehr als 5 Schulstunden."));
+  // eigene Uhrzeit
+  b.einstellungen.erinnerungAb = "12:00";
+  assert.deepEqual(erinnerung(new Date(2026, 8, 15, 13, 0), b), warn("Seit dem Abruf am Mo 14.09. war 1 Schulstunde."));
+  // Abruf vor Unterrichtsbeginn: der Tag selbst zählt
+  const frueh = lueckeDaten(new Date(2026, 8, 14, 7, 0).toISOString());
+  assert.equal(erinnerung(new Date(2026, 8, 14, 14, 0), frueh), null);
+  assert.deepEqual(erinnerung(new Date(2026, 8, 14, 16, 0), frueh), warn("Seit dem Abruf heute vor Unterrichtsbeginn waren 2 Schulstunden."));
+  // fehlgeschlagener Abruf: rot, auch vormittags
+  const fehler = lueckeDaten();
+  fehler.sync.letzterFehler = { zeit: new Date(2026, 8, 15, 7, 0).toISOString(), art: "auth", text: "Anmeldung abgelaufen" };
+  assert.deepEqual(erinnerung(new Date(2026, 8, 15, 10, 0), fehler), { art: "fehler", text: "Letzter Abruf fehlgeschlagen: Anmeldung abgelaufen" });
+  // ohne Stundenplan: nach mehr als syncWarnungNachTagen Tagen, nicht an freien Tagen
+  const ohne = lueckeDaten();
+  ohne.stundenplan = leererStundenplan();
+  assert.equal(erinnerung(new Date(2026, 8, 17, 16, 0), ohne), null);
+  assert.deepEqual(erinnerung(new Date(2026, 8, 18, 16, 0), ohne), warn("Letzter Abruf vor 4 Tagen."));
+  ohne.einstellungen.freieTage = ["2026-09-18"];
+  assert.equal(erinnerung(new Date(2026, 8, 18, 16, 0), ohne), null);
+  assert.equal(erinnerung(new Date(2026, 8, 16, 20, 0), leererBestand()), null);
 });
 
 test("herkunftZeile und syncStatus liefern Klartext mit Alter", () => {

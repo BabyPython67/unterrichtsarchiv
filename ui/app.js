@@ -12,7 +12,7 @@ import {
 } from "../kern/filtern.js";
 import {
   baueDigest, digestKopfzeile, tagesablauf, herkunftZeile, syncZeile, planFunktion, schultagSuchen, datumPlus, isoDatum, vorTagenText,
-  ermittleWochenplan, mitStandard, lueckeText, stundenSeitAbruf, stundenSeitAbrufText, eintragDatum, kurseZumEintragen, kurseOhneHausaufgabe,
+  ermittleWochenplan, mitStandard, erinnerung, stundenSeitAbruf, stundenSeitAbrufText, eintragDatum, kurseZumEintragen, kurseOhneHausaufgabe,
 } from "../kern/logik.js";
 import {
   kurseZusammenfassung, vorschauZusammenfassung, wochenplanZusammenfassung, freieTageZusammenfassung,
@@ -67,7 +67,7 @@ const zustand = {
   vorher: "archiv",       // wohin „Zurück“ aus den Einstellungen führt
   seite: [],              // Unterseite der Einstellungen, siehe renderEinstellungen
   vorschauDatum: null,    // null = nächster Schultag automatisch, sonst per Pfeil gewählter Tag
-  abrufHilfeOffen: false, // Kurzanleitung zum Lesezeichen im Hinweis der Vorschau aufgeklappt
+  abrufHilfeOffen: false, // Kurzanleitung zum Lesezeichen in der Erinnerung aufgeklappt
   entwurf: ENTWURF_LEER(), // Eingaben unter „Eintragen“, bleiben beim Reiterwechsel erhalten
   bearbeiten: null,       // { id, zurueck, scroll }: ein selbst eingetragener Eintrag wird geändert
   meldung: null,
@@ -146,6 +146,7 @@ function datenVerarbeiten(objekt, meta = {}) {
 function render() {
   renderStand();
   renderMeldung();
+  renderErinnerung();
   const a = zustand.ansicht;
   $("knopf-einstellungen").setAttribute("aria-pressed", String(a === "einstellungen"));
   $("reiter-archiv").setAttribute("aria-pressed", String(a === "archiv"));
@@ -260,7 +261,16 @@ function lesezeichenSchritt() {
   return "In der Lesezeichenleiste auf dein Lesezeichen klicken.";
 }
 
-/** Hinweis in der Vorschau: Text, Link zum Schulmanager und eine zugeklappte Kurzanleitung zum Lesezeichen. */
+/** Erinnerung unter den Reitern (nicht in den Einstellungen): Rückstand seit dem Abruf oder Abruf fehlgeschlagen. */
+function renderErinnerung() {
+  const box = $("erinnerung");
+  box.textContent = "";
+  const e = zustand.ansicht === "einstellungen" ? null : erinnerung(new Date(), zustand.bestand);
+  box.hidden = !e;
+  if (e) box.append(abrufHinweis(e.art, e.text));
+}
+
+/** Hinweis mit Text, Link zum Schulmanager und einer zugeklappten Kurzanleitung zum Lesezeichen. */
 function abrufHinweis(art, text) {
   const hilfe = el("div", { class: "abruf-hilfe", id: "abruf-hilfe", hidden: !zustand.abrufHilfeOffen },
     el("ol", {},
@@ -607,15 +617,9 @@ function renderVorschau() {
   ));
   box.append(el("p", { class: "herkunft", text: herkunftZeile(digest, bestand.stundenplan, jetzt, einst) }));
 
-  // Abrufstand leise unter der Herkunft. Eine Box statt der Zeile, wenn der letzte Abruf fehlschlug
-  // oder seitdem Unterricht war, zu dem ein Eintrag fehlt.
+  // Abrufstand leise unter der Herkunft. Fehler und Rückstand stehen als Erinnerung oben (renderErinnerung).
   const sync = syncZeile(digest, bestand.stundenplan, bestand.sync, jetzt, einst);
-  const luecke = lueckeText(digest);
-  if (sync && sync.art === "fehler") {
-    box.append(abrufHinweis("fehler", sync.text));
-  } else if (luecke) {
-    box.append(abrufHinweis("warn", luecke));
-  } else if (sync) {
+  if (sync && sync.art !== "fehler") {
     box.append(el("p", { class: `herkunft${sync.art === "warn" ? " alt" : ""}`, text: sync.text }));
   }
 
@@ -1010,6 +1014,15 @@ function seiteVorschau(box) {
   box.append(gruppe(zeileMit("Unterrichtsbeginn", beginn)));
   box.append(el("p", { text: "Bis zu dieser Uhrzeit zeigt die Vorschau den heutigen Tag, danach den nächsten Schultag." }));
 
+  const ab = el("input", { type: "time", value: einst.erinnerungAb, "aria-label": "Erinnerung ab" });
+  ab.addEventListener("change", () => {
+    if (!/^\d{2}:\d{2}$/.test(ab.value)) return;
+    einst.erinnerungAb = ab.value;
+    speichern();
+  });
+  box.append(gruppe(zeileMit("Erinnerung ab", ab)));
+  box.append(el("p", { text: "War seit dem letzten Abruf Unterricht, erinnert die App ab dieser Uhrzeit oben daran, das Lesezeichen anzutippen. Stunden von früheren Tagen zählen sofort." }));
+
   box.append(gruppe(
     zeile("Wochenplan", wochenplanZusammenfassung(einst), () => seiteOeffnen(["vorschau", "wochenplan"])),
     zeile("Freie Tage", freieTageZusammenfassung(einst), () => seiteOeffnen(["vorschau", "frei"])),
@@ -1373,8 +1386,9 @@ function verdrahten() {
 
   // Abgleich nur zu diesen Anlässen, kein Takt: Zurückwechseln in den Tab, Safari holt die Seite
   // aus dem Verlauf-Cache, Netz ist wieder da.
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") abgleichStarten(); });
-  window.addEventListener("pageshow", (e) => { if (e.persisted) abgleichStarten(); });
+  // Beim Zurückkehren: Erinnerung neu prüfen (die Uhrzeit kann inzwischen erreicht sein), dann abgleichen.
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { renderErinnerung(); abgleichStarten(); } });
+  window.addEventListener("pageshow", (e) => { if (e.persisted) { renderErinnerung(); abgleichStarten(); } });
   window.addEventListener("online", () => abgleichStarten());
 }
 

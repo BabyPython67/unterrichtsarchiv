@@ -531,6 +531,9 @@ input[type="time"] {
 .abruf-hilfe li { margin: 2px 0; }
 .abruf-hilfe p { margin: 6px 0 0; }
 
+/* Erinnerung unter den Reitern, gleiche Breite wie der Inhalt darunter */
+.erinnerung { padding: 0 16px; max-width: 780px; }
+
 /* Hinweis in der iOS-Web-App vom Home-Bildschirm (eigener Speicher, bekommt keine Daten) */
 .app-hinweis { margin: 12px 16px 0; }
 .app-hinweis p { margin: 0; }

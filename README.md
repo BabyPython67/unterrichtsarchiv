@@ -92,9 +92,14 @@ Die App übernimmt nur, was Lehrkräfte im Schulmanager eintragen.
 Keine Hausaufgabe in der App heißt also nicht sicher, dass nichts auf ist.
 
 Die Vorschau gleicht deshalb mit dem Stundenplan ab. Hat die letzte Stunde eines Kurses keinen
-Eintrag, steht auf seiner Karte „Letzte Stunde fehlt“. War diese Stunde nach dem letzten Abruf,
-steht oben ein Hinweis: dann einfach das Lesezeichen erneut antippen. Oben in der App zeigt die
-Zeile mit dem Stand, wie viele Schulstunden seitdem waren.
+Eintrag, steht auf seiner Karte „Letzte Stunde fehlt“. Oben im Archiv zeigt die Zeile mit dem
+Stand, wie viele Schulstunden seit dem letzten Abruf waren.
+
+War seit dem letzten Abruf Unterricht, erinnert die App unter den Reitern daran, das Lesezeichen
+anzutippen. Stunden von heute zählen erst nach Schulschluss, ab 15 Uhr, frühere Tage sofort. Die
+Uhrzeit lässt sich unter Einstellungen → Vorschau → Erinnerung ab ändern. In der Erinnerung führt
+„Schulmanager öffnen“ zur Anmeldung, „Wie geht das?“ zeigt die Schritte. Nach dem Abruf
+verschwindet sie, mit Abgleich auch auf den anderen Geräten.
 
 ## Auf mehreren Geräten
 
@@ -149,6 +154,8 @@ ersten Mal. Ob es aktuell ist, zeigt die Build-Kennung: Sie steht auf der Leseze
 der Box, die nach dem Antippen im Schulmanager erscheint. Stimmen beide überein, passt es. Bei
 allen anderen Änderungen reicht es, die App neu zu laden.
 
+- **14.09.2026:** Erinnerung unter den Reitern, wenn seit dem letzten Abruf Unterricht war, mit
+  Link zum Schulmanager und Kurzanleitung. Uhrzeit unter Einstellungen → Vorschau.
 - **14.09.2026:** Abgleich zwischen Geräten: Einträge, Stundenplan und Einstellungen auf iPad und
   iPhone gleich halten (Einstellungen → Abgleich). Vorerst nur auf meinen eigenen Geräten.
 - **13.09.2026:** Neuer Reiter „Eintragen“: Hausaufgaben, die nicht im Schulmanager stehen, selbst

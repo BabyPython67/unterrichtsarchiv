@@ -10,7 +10,7 @@ test("leererBestand hat das Schema aus Dispatch §5 plus die v3-Felder aus §4",
     kurszuordnung: {},
     sync: { letzterLauf: null, letzterErfolg: null, letzterFehler: null, quelle: null },
     einstellungen: {
-      wochenplan: { fensterTage: 56, overrides: {} }, freieTage: [], schulbeginn: "08:00",
+      wochenplan: { fensterTage: 56, overrides: {} }, freieTage: [], schulbeginn: "08:00", erinnerungAb: "15:00",
       altSchwelleTage: 21, stundenplanStaleTage: 7, startReiter: "archiv", syncWarnungNachTagen: 3,
     },
     geloescht: {},

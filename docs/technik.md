@@ -104,7 +104,7 @@ Woher die Vorschau weiß, welche Kurse an einem Tag sind, steht in der Zeile unt
 
 Darunter steht leise, wann zuletzt abgerufen wurde, ab drei Tagen als „evtl. veraltet“ markiert.
 Nennt die Herkunft-Zeile denselben Abruf schon, entfällt die Zeile. Ist der letzte Abruf
-fehlgeschlagen, erscheint stattdessen ein roter Hinweis mit Link zum Schulmanager. Die Vorschau
+fehlgeschlagen, entfällt sie auch; dann steht oben die rote Erinnerung (siehe unten). Die Vorschau
 zeigt weder Stundennummer noch Uhrzeit; die Nummer aus dem Stundenplan bestimmt nur die
 Reihenfolge.
 
@@ -113,12 +113,21 @@ gezeigten Tag, an dem der Kurs stattfand (ohne Entfall, „Nicht anzeigen“ und
 Uhrzeiten gilt der heutige Tag ab Unterrichtsbeginn als gehalten. Hat das Archiv für diesen oder
 einen späteren Tag keinen Eintrag, trägt die Karte die Marke „Letzte Stunde fehlt“. Die Ursache
 steht bewusst nicht dabei: Entweder hat die Lehrkraft nichts eingetragen, oder der Abruf war
-vorher. Lag die Stunde nach dem letzten Abruf (am selben Tag nur, wenn der Abruf vor
-Unterrichtsbeginn war), ersetzt ein gelber Hinweis „Seit dem letzten Abruf am … war Unterricht.“
-die leise Abrufzeile. Er und der rote Fehlerhinweis haben den Link zum Schulmanager und
-„Wie geht das?“, das eine Kurzanleitung zum Lesezeichen aufklappt (Schritt je Gerät nach
-User-Agent). Die Stand-Zeile oben zählt die gehaltenen Schulstunden seit dem letzten Abruf
+vorher. Die Stand-Zeile oben im Archiv zählt die gehaltenen Schulstunden seit dem letzten Abruf
 (`stundenSeitAbruf`); reicht der Stundenplan nicht bis heute, heißt es „mehr als“.
+
+**Erinnerung.** Unter den Reitern Archiv, Vorschau und Eintragen steht bei Rückstand eine
+Erinnerung (`erinnerung` in `kern/logik.js`), die sich nicht wegtippen lässt. Rot, solange der
+letzte Abruf fehlgeschlagen ist. Gelb, wenn seit dem letzten Abruf Unterricht war („Seit dem Abruf
+am Mo 14.09. waren 5 Schulstunden.“), gezählt wie bei `stundenSeitAbruf` (ein Tag gilt nur als nach
+dem Abruf, wenn der Abruf vorher lag oder am selben Tag vor Unterrichtsbeginn). Stunden von heute
+zählen erst ab „Erinnerung ab“ (Einstellungen → Vorschau, Standard 15:00), frühere Tage sofort.
+Reicht der Stundenplan nicht so weit und liegt der Abruf mehr als `syncWarnungNachTagen` Tage
+zurück, heißt sie „Letzter Abruf vor … Tagen.“, an freien Tagen nicht. Sie hat den Link zum
+Schulmanager und „Wie geht das?“, das eine Kurzanleitung zum Lesezeichen aufklappt (Schritt je
+Gerät nach User-Agent). Neu geprüft wird bei jedem Rendern und beim Zurückkehren in den Tab; ein
+Abruf, auch per Abgleich von einem anderen Gerät, lässt sie verschwinden. Die Marke „Letzte Stunde
+fehlt“ auf den Karten der Vorschau bleibt davon unberührt.
 
 ## Abgleich zwischen Geräten
 

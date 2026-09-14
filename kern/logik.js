@@ -11,6 +11,7 @@ export const EINSTELLUNGEN_STANDARD = Object.freeze({
   wochenplan: { fensterTage: 56, overrides: {} },
   freieTage: [],
   schulbeginn: "08:00",
+  erinnerungAb: "15:00",
   altSchwelleTage: 21,
   stundenplanStaleTage: 7,
   startReiter: "archiv",
@@ -285,16 +286,46 @@ export function stundenSeitAbruf(jetzt, daten) {
   const einst = mitStandard(daten.einstellungen);
   const abruf = abrufStand(daten, einst.schulbeginn);
   if (!abruf) return null;
-  const bis = gehaltenBis(jetzt, einst.schulbeginn);
-  const planFuer = planFunktion(daten, isoDatum(jetzt));
+  const r = stundenNachAbruf(daten, einst, abruf, gehaltenBis(jetzt, einst.schulbeginn), isoDatum(jetzt));
+  return r.anzahl ? r : null;
+}
+
+/** Gehaltene Schulstunden nach dem Abruf bis einschließlich Tag `bis` → { anzahl, mehr }. */
+function stundenNachAbruf(daten, einst, abruf, bis, heute) {
+  const planFuer = planFunktion(daten, heute);
   let anzahl = 0;
   for (const plan of gehalteneTage(daten, planFuer, bis, einst.freieTage)) {
     if (!nachAbruf(plan.datum, abruf)) continue;
     for (const k of plan.kurse) anzahl += Array.isArray(k.stunden) && k.stunden.length ? k.stunden.length : 1;
   }
-  if (!anzahl) return null;
-  const f = daten.stundenplan.fenster || {};
+  const f = (daten.stundenplan && daten.stundenplan.fenster) || {};
   return { anzahl, mehr: !f.bis || bis > f.bis };
+}
+
+/**
+ * Erinnerung oben in der App, das Lesezeichen anzutippen → { art: "warn"|"fehler", text } oder null.
+ * Rot, solange der letzte Abruf fehlgeschlagen ist. Sonst erst nach Schulschluss: Stunden von heute
+ * zählen ab erinnerungAb, frühere Tage immer. Reicht der Stundenplan nicht bis dahin, erinnert sie
+ * nach syncWarnungNachTagen Tagen ohne Abruf, nur nicht an freien Tagen.
+ */
+export function erinnerung(jetzt, daten) {
+  const einst = mitStandard(daten.einstellungen);
+  const s = syncStatus(daten.sync, jetzt, einst);
+  if (s.art === "fehler") return { art: "fehler", text: s.text };
+  const abruf = abrufStand(daten, einst.schulbeginn);
+  if (!abruf) return null;
+  const heute = isoDatum(jetzt);
+  const bis = uhrzeit(jetzt) < einst.erinnerungAb ? datumPlus(heute, -1) : heute;
+  const r = stundenNachAbruf(daten, einst, abruf, bis, heute);
+  if (r.anzahl) {
+    const seit = abruf.tag === heute ? "heute vor Unterrichtsbeginn" : `am ${wochentagLesbar(abruf.tag)}`;
+    const stunden = `${r.mehr ? "mehr als " : ""}${r.anzahl} ${r.anzahl === 1 ? "Schulstunde" : "Schulstunden"}`;
+    return { art: "warn", text: `Seit dem Abruf ${seit} ${r.anzahl === 1 ? "war" : "waren"} ${stunden}.` };
+  }
+  if (r.mehr && tageZwischen(abruf.tag, bis) > einst.syncWarnungNachTagen && !istFrei(heute, einst.freieTage)) {
+    return { art: "warn", text: `Letzter Abruf ${vorTagenText(tageZwischen(abruf.tag, heute))}.` };
+  }
+  return null;
 }
 
 /** "seitdem 5 Schulstunden", "seitdem mehr als 5 Schulstunden"; ohne Wert "". */
