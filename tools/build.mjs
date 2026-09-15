@@ -20,7 +20,7 @@ export const SHELL_DATEIEN = [
   "index.html", "install.html", "manifest.json", "ui/stil.css", "ui/app.js",
   "kern/erkennen.js", "kern/normalisieren.js", "kern/mergen.js", "kern/filtern.js",
   "kern/rohantwort.js", "kern/speicher.js", "kern/importieren.js", "kern/logik.js", "kern/stundenplan.js",
-  "kern/zusammenfassung.js", "kern/abgleich.js", "kern/verschluesselung.js",
+  "kern/zusammenfassung.js", "kern/abgleich.js", "kern/verschluesselung.js", "kern/neuigkeiten.js",
   "quellen/quelle.js", "quellen/dateiQuelle.js", "quellen/empfangsQuelle.js", "quellen/ablage.js",
   "bookmarklet/bookmarklet.js",
 ];

@@ -19,6 +19,7 @@ import {
   kurseZusammenfassung, vorschauZusammenfassung, wochenplanZusammenfassung, freieTageZusammenfassung,
   faecherImStundenplan, faecherZusammenfassung, datenZusammenfassung, abgleichZusammenfassung,
 } from "../kern/zusammenfassung.js";
+import { abrufBericht, berichtAnsicht, pruefeBericht, eintragMarke, neuJeKurs, zeitKurz } from "../kern/neuigkeiten.js";
 import { SCHULMANAGER_ORIGIN } from "../quellen/quelle.js";
 import { DateiQuelle } from "../quellen/dateiQuelle.js";
 import { EmpfangsQuelle } from "../quellen/empfangsQuelle.js";
@@ -71,8 +72,29 @@ const zustand = {
   abrufHilfeOffen: false, // Kurzanleitung zum Lesezeichen in der Erinnerung aufgeklappt
   entwurf: ENTWURF_LEER(), // Eingaben unter „Eintragen“, bleiben beim Reiterwechsel erhalten
   bearbeiten: null,       // { id, zurueck, scroll }: ein selbst eingetragener Eintrag wird geändert
+  neu: null,              // Bericht des letzten Abrufs (kern/neuigkeiten.js): Box und Marken, nur auf diesem Gerät
+  neuZu: false,           // Box zu einer Zeile zugeklappt, nach Antippen einer ihrer Zeilen
   meldung: null,
 };
+
+// Unter eigenem Schlüssel, nicht im Bestand: kommt weder in den Export noch in die Ablage.
+const NEU_KEY = "unterrichtsarchiv:neu";
+
+function neuLesen() {
+  try {
+    return pruefeBericht(JSON.parse(storage.getItem(NEU_KEY) || "null"));
+  } catch {
+    return null;
+  }
+}
+
+function neuSchreiben(bericht) {
+  zustand.neu = bericht;
+  try {
+    if (bericht) storage.setItem(NEU_KEY, JSON.stringify(bericht));
+    else storage.removeItem(NEU_KEY);
+  } catch { /* ohne Speicher gilt der Bericht nur bis zum Neuladen */ }
+}
 
 function laden() {
   if (!storage) { zustand.speicherFehler = "Der Browser-Speicher ist nicht verfügbar. Daten gehen beim Schließen verloren."; return; }
@@ -81,6 +103,7 @@ function laden() {
   zustand.speicherFehler = fehler;
   gespeichert = kopie(bestand);
   abgleich.status = abgleichLesen();
+  zustand.neu = neuLesen();
   if (fehler) defektSichern(storage);
   else if (migriert) speichern();   // Schema 1 → 2 einmal zurückschreiben
   zustand.ansicht = bestand.einstellungen.startReiter === "vorschau" ? "vorschau" : "archiv";
@@ -120,6 +143,7 @@ function melden(art, text, details = []) {
 
 /** Zentraler Einstieg für alle Quellen. */
 function datenVerarbeiten(objekt, meta = {}) {
+  const vorher = zustand.bestand;
   let r;
   try {
     r = importieren(zustand.bestand, objekt, heuteIso(), new Date().toISOString());
@@ -130,14 +154,27 @@ function datenVerarbeiten(objekt, meta = {}) {
   zustand.bestand = r.bestand;
   speichern();
   const { neu, geaendert, unveraendert } = r.ergebnis;
-  const woher = meta.datei ? ` aus ${meta.datei}` : meta.quelle ? ` (${meta.quelle})` : "";
-  const plan = r.stundenplan ? ` Stundenplan bis ${datumLesbar(r.stundenplan.bis)} aktualisiert.` : "";
-  const text = r.art === "export"
-    ? `Export-Datei übernommen${woher}: ${neu} neu, ${geaendert} geändert, ${unveraendert} unverändert.`
-    : `Abruf übernommen${woher}: ${neu} neu, ${geaendert} geändert, ${unveraendert} unverändert.${plan}`;
-  melden(r.warnungen.length ? "warn" : "ok", text, r.warnungen.map((w) => w.text));
+  if (r.art === "export") {
+    const woher = meta.datei ? ` aus ${meta.datei}` : "";
+    melden(r.warnungen.length ? "warn" : "ok", `Export-Datei übernommen${woher}: ${neu} neu, ${geaendert} geändert, ${unveraendert} unverändert.`, r.warnungen.map((w) => w.text));
+  } else {
+    abrufZeigen(abrufBericht({ vorher, nachher: zustand.bestand, ergebnis: r.ergebnis, heute: heuteIso(), warnungen: r.warnungen }));
+  }
   render();
-  return r.ergebnis;
+  return { neu, geaendert, unveraendert };   // geht zurück an das Lesezeichen, deshalb nur Zahlen
+}
+
+/** Nach einem Abruf: Box „Neu seit …“ oder „Archiv angelegt“. Ohne Neues nur eine kurze Meldung. */
+function abrufZeigen(bericht) {
+  if (berichtAnsicht(bericht, zustand.bestand).art === "leer") {
+    neuSchreiben({ ...bericht, offen: false });
+    const text = bericht.seit ? `Aktuell. Nichts Neues seit ${zeitKurz(bericht.seit)}.` : "Aktuell. Nichts Neues.";
+    melden(bericht.warnungen.length ? "warn" : "ok", text, bericht.warnungen);
+    return;
+  }
+  zustand.neuZu = false;
+  neuSchreiben(bericht);
+  zustand.meldung = null;   // „Warte auf die Daten …“ ist erledigt
 }
 
 // ---------------------------------------------------------------------------
@@ -148,12 +185,13 @@ function render() {
   renderStand();
   renderMeldung();
   renderErinnerung();
+  renderNeuigkeiten();
   const a = zustand.ansicht;
   $("knopf-einstellungen").setAttribute("aria-pressed", String(a === "einstellungen"));
   $("reiter-archiv").setAttribute("aria-pressed", String(a === "archiv"));
   $("reiter-vorschau").setAttribute("aria-pressed", String(a === "vorschau"));
   $("reiter-eintragen").setAttribute("aria-pressed", String(a === "eintragen"));
-  $("stand").hidden = a !== "archiv";
+  $("stand").hidden = a === "einstellungen";
   $("liste-bereich").hidden = a !== "archiv";
   $("vorschau").hidden = a !== "vorschau";
   $("eintragen").hidden = a !== "eintragen";
@@ -181,28 +219,94 @@ function ansichtWechseln(ziel, seite = []) {
   render();
 }
 
+/** Zeile unter dem Titel in Archiv, Vorschau und Eintragen: Stand und Link „Aktualisieren“. */
 function renderStand() {
-  const { eintraege, letzterAbruf } = zustand.bestand;
-  const kurse = Object.keys(kurseZaehlen(eintraege)).length;
-  const teile = [];
-  if (eintraege.length) {
-    teile.push(`${eintraege.length} ${eintraege.length === 1 ? "Eintrag" : "Einträge"} aus ${kurse} ${kurse === 1 ? "Kurs" : "Kursen"}`);
-  } else {
-    teile.push("Noch keine Einträge");
-  }
-  if (letzterAbruf) teile.push(`Stand ${zeitLesbar(letzterAbruf)}`);
+  // Die Anzahl der Einträge steht in der Kursliste; hier nur der Stand, damit der Link am Handy in die Zeile passt.
+  const { letzterAbruf } = zustand.bestand;
   const stand = $("stand");
-  stand.textContent = teile.join(" · ");
+  stand.textContent = letzterAbruf ? `Stand ${zeitKurz(letzterAbruf) || datumLesbar(letzterAbruf)}` : "Noch nicht abgerufen";
+  // Steht oben die Erinnerung, trägt sie Rückstand und Link, damit nichts doppelt dasteht.
+  if (erinnerungJetzt()) return;
   // Unterricht seit dem Stand laut Stundenplan: sagt, ob das Archiv hinterherhinkt.
   const seit = letzterAbruf ? stundenSeitAbrufText(stundenSeitAbruf(new Date(), zustand.bestand)) : "";
   if (seit) stand.append(" · ", el("span", { class: "alt", text: seit }));
+  stand.append(" · ", aktualisierenLink("stand-link"));
 }
 
-/** ISO-Zeitstempel in Ortszeit, z. B. "11.09.2026, 00:12". Reine Tagesdaten laufen über datumLesbar. */
-function zeitLesbar(iso) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return datumLesbar(iso);
-  return d.toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+/** Link zum Schulmanager. Dort das Lesezeichen antippen, dann kommen die neuen Daten hierher. */
+const aktualisierenLink = (klasse = null) => el("a", { class: klasse, href: `${SCHULMANAGER_ORIGIN}/`, target: "_blank", rel: "noopener" }, "Aktualisieren");
+
+/** Erinnerung oben (Rückstand oder fehlgeschlagener Abruf), in den Einstellungen nie. */
+const erinnerungJetzt = () => (zustand.ansicht === "einstellungen" ? null : erinnerung(new Date(), zustand.bestand));
+
+// ---- Neu seit dem letzten Abruf ----------------------------------------------
+//
+// Box unter den Reitern, bis sie geschlossen wird oder der nächste Abruf sie ersetzt. Die Daten
+// kommen aus kern/neuigkeiten.js. Antippen einer Zeile öffnet den Kurs im Archiv, eine Zeile zum
+// Stundenplan den Tag in der Vorschau.
+
+function renderNeuigkeiten() {
+  const box = $("neuigkeiten");
+  box.textContent = "";
+  const b = zustand.neu;
+  const v = b && b.offen && zustand.ansicht !== "einstellungen" ? berichtAnsicht(b, zustand.bestand) : null;
+  box.hidden = !v || v.art === "leer";
+  if (box.hidden) return;
+
+  // Nach dem Antippen einer Zeile klappt die Box zu einer Zeile zu, damit Kurs oder Tag darunter im Blick sind.
+  const zu = zustand.neuZu && v.art !== "erst";
+  const titel = v.art === "erst" ? el("h2", { text: v.titel }) : el("h2", {},
+    el("button", { type: "button", class: "neu-auf", "aria-expanded": String(!zu), onclick: () => { zustand.neuZu = !zustand.neuZu; renderNeuigkeiten(); } },
+      el("span", { text: v.titel }),
+      zu ? el("span", { class: "neu-meta", text: v.zusammenfassung }) : null,
+      el("span", { class: "neu-pfeil", "aria-hidden": "true", text: "›" })));
+  const inhalt = el("div", { class: `neu-box${v.warnungen.length ? " warn" : ""}` },
+    el("div", { class: "neu-kopf" },
+      titel,
+      el("button", { type: "button", class: "textknopf", onclick: () => { neuSchreiben({ ...zustand.neu, offen: false }); renderNeuigkeiten(); } }, "Schließen")));
+  const leise = (text) => el("p", { class: "neu-leise", text });
+
+  if (zu) {
+    box.append(inhalt);
+    return;
+  }
+  if (v.art === "erst") {
+    inhalt.append(el("p", { text: v.text }), el("p", { class: "neu-leise", text: v.hinweis }));
+  } else {
+    const zumKurs = (kurs) => () => { zustand.neuZu = true; ansichtWechseln("archiv"); kursOeffnen(kurs); };
+    if (v.art === "liste") {
+      for (const e of [...v.hausaufgaben, ...v.inhalte]) inhalt.append(neuEintragZeile(e, zumKurs(e.kurs)));
+    } else {
+      for (const e of v.hausaufgaben) inhalt.append(neuEintragZeile(e, zumKurs(e.kurs)));
+      if (v.weitereHausaufgaben) inhalt.append(leise(`und ${v.weitereHausaufgaben} weitere ${v.weitereHausaufgaben === 1 ? "Hausaufgabe" : "Hausaufgaben"}`));
+      for (const k of v.kurse) {
+        inhalt.append(el("button", { type: "button", class: "neu-zeile zaehler", onclick: zumKurs(k.kurs) },
+          el("span", { text: k.name }), el("span", { class: "neu-meta", text: k.text })));
+      }
+      if (v.rest) {
+        inhalt.append(el("div", { class: "neu-zeile zaehler" },
+          el("span", { text: `und ${v.rest.anzahl} weitere Kurse` }), el("span", { class: "neu-meta", text: v.rest.text })));
+      }
+    }
+    for (const p of v.plan) {
+      inhalt.append(el("button", {
+        type: "button", class: "neu-zeile",
+        onclick: () => { zustand.neuZu = true; zustand.vorschauDatum = p.datum; ansichtWechseln("vorschau"); window.scrollTo(0, 0); },
+      }, el("span", { class: "neu-meta" }, "Stundenplan", el("span", { class: "marke-neu", text: "neu" })), el("span", { class: "neu-ha", text: p.text })));
+    }
+    if (v.weiterePlan) inhalt.append(leise(`und ${v.weiterePlan} weitere Änderungen im Stundenplan`));
+  }
+  if (v.warnungen.length) inhalt.append(el("ul", { class: "neu-warn" }, v.warnungen.map((w) => el("li", { text: w }))));
+  box.append(inhalt);
+}
+
+/** Eintrag in der Box. Bei „geändert“ ist unklar, welches Feld sich geändert hat: dann beides. */
+function neuEintragZeile(e, onclick) {
+  const zeigeThema = e.marke === "geändert" || !e.hausaufgabe;
+  return el("button", { type: "button", class: "neu-zeile", onclick },
+    el("span", { class: "neu-meta" }, `${e.name} · ${wochentag(e.datum)}`, el("span", { class: "marke-neu", text: e.marke })),
+    e.hausaufgabe ? el("span", { class: "neu-ha" }, el("b", { text: "Hausaufgabe: " }), e.hausaufgabe) : null,
+    zeigeThema ? el("span", { class: `neu-thema${e.thema ? "" : " leer"}`, text: e.thema || "Kein Inhalt eingetragen" }) : null);
 }
 
 function renderMeldung() {
@@ -266,7 +370,7 @@ function lesezeichenSchritt() {
 function renderErinnerung() {
   const box = $("erinnerung");
   box.textContent = "";
-  const e = zustand.ansicht === "einstellungen" ? null : erinnerung(new Date(), zustand.bestand);
+  const e = erinnerungJetzt();
   box.hidden = !e;
   if (e) box.append(abrufHinweis(e.art, e.text));
 }
@@ -292,7 +396,7 @@ function abrufHinweis(art, text) {
   return el("div", { class: `hinweis ${art}` },
     el("p", { text }),
     el("div", { class: "aktionen" },
-      el("a", { href: `${SCHULMANAGER_ORIGIN}/`, target: "_blank", rel: "noopener" }, "Schulmanager öffnen"),
+      aktualisierenLink(),
       knopf,
     ),
     hilfe,
@@ -501,8 +605,9 @@ function renderListe() {
 
   // Kursliste ohne Suche und Filter: nur eine Zeile je Kurs, die Einträge stehen auf der Kursseite.
   if (!filter.kurs && !filter.suche.trim() && !aktiveFilter().length) {
+    const neuJe = neuJeKurs(zustand.neu, bestand.eintraege);
     ausgabe.append(gruppe(kursListe(bestand.eintraege, bestand.kursAlias).map((k) =>
-      zeile(k.name, k.text, () => kursOeffnen(k.kurs)))));
+      zeile(k.name, neuJe.has(k.kurs) ? `${k.text} · ${neuJe.get(k.kurs)}` : k.text, () => kursOeffnen(k.kurs)))));
     return;
   }
 
@@ -569,7 +674,9 @@ function eintragZeile(e, suche) {
       onclick: () => bearbeitenOeffnen(e.id, "archiv"),
     }, "Ändern")));
   }
-  return el("div", { class: "eintrag" }, el("div", { class: "wann", text: wochentag(e.datum) }), inhalt);
+  const marke = eintragMarke(zustand.neu, e.id);
+  return el("div", { class: "eintrag" },
+    el("div", { class: "wann" }, wochentag(e.datum), marke ? el("span", { class: "marke-neu", text: marke }) : null), inhalt);
 }
 
 // ---- Vorschau --------------------------------------------------------------
@@ -1382,6 +1489,7 @@ function archivLoeschen() {
   zustand.vorschauDatum = null;
   zustand.entwurf = ENTWURF_LEER();
   zustand.bearbeiten = null;
+  neuSchreiben(null);
   zustand.ansicht = "archiv";
   zustand.vorher = "archiv";
   zustand.seite = [];
@@ -1424,8 +1532,9 @@ function verdrahten() {
   // Abgleich nur zu diesen Anlässen, kein Takt: Zurückwechseln in den Tab, Safari holt die Seite
   // aus dem Verlauf-Cache, Netz ist wieder da.
   // Beim Zurückkehren: Erinnerung neu prüfen (die Uhrzeit kann inzwischen erreicht sein), dann abgleichen.
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { renderErinnerung(); abgleichStarten(); } });
-  window.addEventListener("pageshow", (e) => { if (e.persisted) { renderErinnerung(); abgleichStarten(); } });
+  // Die Standzeile hängt mit daran: Erscheint die Erinnerung, verschwindet dort der Link.
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { renderStand(); renderErinnerung(); abgleichStarten(); } });
+  window.addEventListener("pageshow", (e) => { if (e.persisted) { renderStand(); renderErinnerung(); abgleichStarten(); } });
   window.addEventListener("online", () => abgleichStarten());
 }
 

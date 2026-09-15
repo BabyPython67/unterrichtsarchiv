@@ -83,6 +83,25 @@ liefert das als `kurse[].hausaufgaben: [{ text, bis }]`; die Karte zeigt Aufgabe
 mit leisem „bis …“. Der Schulmanager liefert kein Abgabedatum, deshalb gibt es `bis` nur bei
 eigenen Einträgen.
 
+**Aktualisieren.** Unter dem Titel steht in Archiv, Vorschau und Eintragen der Stand
+(`zeitKurz`, ohne Anzahl der Einträge, die steht in der Kursliste), der Rückstand „seitdem N Schulstunden“ und der Link
+„Aktualisieren“ zum Schulmanager. Zeigt `erinnerung` gerade eine Box, entfallen Rückstand und Link
+in der Zeile; die Box trägt denselben Link.
+
+**Neu seit dem letzten Abruf.** `mergen` liefert neben den Zählern `neueIds`, `geaenderteIds`
+und `hausaufgabeNeuIds` (Hausaufgabe kam zu einem Eintrag ohne Hausaufgabe dazu). Nach einem Abruf
+baut `abrufBericht` (kern/neuigkeiten.js) daraus einen Bericht, dazu `planAenderungen`: Entfall
+und Vertretung ab heute, die im alten Stundenplan-Cache nicht so standen (leerer alter Cache:
+nichts). Der Bericht liegt unter `unterrichtsarchiv:neu` im localStorage, nicht im Bestand, also
+weder im Export noch in der Ablage; der nächste Abruf ersetzt ihn. `berichtAnsicht` entscheidet,
+was die Box zeigt: „erst“ (vorher kein Eintrag aus dem Schulmanager: nur Anzahl, keine Marken),
+„leer“ (statt Box eine kurze Meldung), „liste“ (bis 5 Einträge: Hausaufgaben, Inhalte, Stundenplan)
+oder „kompakt“ (Hausaufgaben einzeln, der Rest je Kurs gezählt, ab 5 Kursen „und N weitere“).
+Die Box bleibt bis „Schließen“ (`offen`). Antippen einer Zeile klappt sie zu einer Zeile mit
+`zusammenfassung` zu (`zustand.neuZu`, nur bis zum Neuladen), der Titel klappt sie wieder auf. Im Archiv setzt `eintragMarke` „neu“ oder „geändert“ am
+Datum, die Kursliste hängt `neuJeKurs` an. Das Lesezeichen bekommt weiter nur die Zähler zurück.
+Export-Dateien laufen nicht über den Bericht.
+
 **Einstellungen.** Eine Übersicht mit einer Zeile je Thema (Beim Öffnen, Kurse, Vorschau,
 Daten, Abgleich), jeweils mit dem aktuellen Stand darunter. Details stehen auf Unterseiten.
 

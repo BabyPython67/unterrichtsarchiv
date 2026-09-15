@@ -96,14 +96,27 @@ Die App übernimmt nur, was Lehrkräfte im Schulmanager eintragen.
 Keine Hausaufgabe in der App heißt also nicht sicher, dass nichts auf ist.
 
 Die Vorschau gleicht deshalb mit dem Stundenplan ab. Hat die letzte Stunde eines Kurses keinen
-Eintrag, steht auf seiner Karte „Letzte Stunde fehlt“. Oben im Archiv zeigt die Zeile mit dem
-Stand, wie viele Schulstunden seit dem letzten Abruf waren.
+Eintrag, steht auf seiner Karte „Letzte Stunde fehlt“. Oben zeigt die Zeile mit dem Stand, wie
+viele Schulstunden seit dem letzten Abruf waren.
 
 War seit dem letzten Abruf Unterricht, erinnert die App unter den Reitern daran, das Lesezeichen
 anzutippen. Stunden von heute zählen erst nach Schulschluss, ab 15 Uhr, frühere Tage sofort. Die
 Uhrzeit lässt sich unter Einstellungen → Vorschau → Erinnerung ab ändern. In der Erinnerung führt
-„Schulmanager öffnen“ zur Anmeldung, „Wie geht das?“ zeigt die Schritte. Nach dem Abruf
+„Aktualisieren“ zur Anmeldung, „Wie geht das?“ zeigt die Schritte. Nach dem Abruf
 verschwindet sie, mit Abgleich auch auf den anderen Geräten.
+
+## Aktualisieren
+
+In Archiv, Vorschau und Eintragen steht oben hinter dem Stand der Link „Aktualisieren“. Er öffnet
+den Schulmanager, dort das Lesezeichen antippen. Steht gerade die Erinnerung da, sitzt der Link in
+ihr.
+
+Nach dem Abruf zeigt eine Box unter den Reitern, was neu ist: zuerst neue Hausaufgaben, dann neue
+und geänderte Einträge, dann neuer Ausfall oder neue Vertretung im Stundenplan. Antippen öffnet den
+Kurs oder den Tag in der Vorschau, die Box klappt dabei zu einer Zeile zusammen. Sie bleibt, bis
+sie geschlossen wird. Im Archiv tragen neue
+und geänderte Einträge bis zum nächsten Abruf die Marke „neu“ oder „geändert“. Beim allerersten
+Abruf steht dort nur, wie viel übernommen wurde. Ist nichts neu, kommt nur eine kurze Meldung.
 
 ## Auf mehreren Geräten
 
@@ -158,6 +171,8 @@ ersten Mal. Ob es aktuell ist, zeigt die Build-Kennung: Sie steht auf der Leseze
 der Box, die nach dem Antippen im Schulmanager erscheint. Stimmen beide überein, passt es. Bei
 allen anderen Änderungen reicht es, die App neu zu laden.
 
+- **15.09.2026:** Link „Aktualisieren“ oben in Archiv, Vorschau und Eintragen. Nach dem Abruf
+  zeigt eine Box, was neu ist, im Archiv markiert „neu“ die neuen Einträge.
 - **14.09.2026:** Selbst eingetragene Hausaufgaben können ein Abgabedatum („Bis“) bekommen. Die
   Vorschau zeigt sie dann bis zur Abgabe.
 - **14.09.2026:** Erinnerung unter den Reitern, wenn seit dem letzten Abruf Unterricht war, mit

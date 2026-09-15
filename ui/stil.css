@@ -700,3 +700,86 @@ button.primaer {
 .inhalt > .ha:first-child { margin-top: 0; }
 .eigen { margin-top: 4px; color: var(--leise); font-size: 13px; }
 .eigen .textknopf { padding: 8px 4px; margin: -8px -4px; color: var(--akzent); font-size: 13px; }
+
+/* Link „Aktualisieren“ hinter dem Stand, in Archiv, Vorschau und Eintragen */
+.stand-link { font-weight: 600; }
+
+/* Box nach dem Abruf: was neu ist, bleibt bis „Schließen“ */
+.neuigkeiten { padding: 0 16px; max-width: 780px; }
+
+.neu-box {
+  margin-top: 12px;
+  padding: 10px 14px 6px;
+  background: var(--karte);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+}
+
+.neu-box.warn { border-color: var(--warn-fg); }
+.neu-kopf { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.neu-kopf h2 { flex: 1; min-width: 0; margin: 0; font-size: 16px; font-weight: 650; }
+
+/* Titel klappt die Box auf und zu; zugeklappt steht die Zusammenfassung darunter */
+.neu-auf {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 8px;
+  width: 100%;
+  min-height: 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font-weight: 650;
+  text-align: left;
+}
+
+.neu-auf:hover { border-color: transparent; }
+.neu-auf .neu-meta { grid-column: 1; font-weight: 400; }
+.neu-pfeil { grid-column: 2; grid-row: 1; color: var(--leise); font-size: 20px; line-height: 1.1; font-weight: 400; transform: rotate(90deg); }
+.neu-auf[aria-expanded="false"] .neu-pfeil { transform: none; }
+.neu-kopf .textknopf { color: var(--leise); font-size: 14px; }
+.neu-box > p { margin: 0 0 6px; }
+.neu-leise { color: var(--leise); font-size: 14px; }
+
+.neu-zeile {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--linie);
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+
+button.neu-zeile:hover { border-color: var(--linie); background: var(--papier); }
+.neu-zeile:focus-visible { outline-offset: -2px; }
+.neu-meta { display: block; color: var(--leise); font-size: 13px; }
+.neu-ha, .neu-thema { display: block; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+.neu-ha b { font-weight: 650; }
+.neu-thema { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.neu-thema.leer { color: var(--leise); font-style: italic; }
+.neu-zeile.zaehler { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.neu-zeile.zaehler .neu-meta { display: inline; }
+p.neu-leise { margin: 0; padding: 8px 0; border-top: 1px solid var(--linie); }
+.neu-warn { margin: 0; padding: 8px 0 4px 18px; border-top: 1px solid var(--linie); color: var(--warn-fg); font-size: 14px; }
+
+.marke-neu {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--akzent-weich);
+  color: var(--akzent);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+/* Im Archiv unter dem Datum, am Handy daneben */
+.wann .marke-neu { display: block; width: fit-content; margin: 2px 0 0; }
+
+@media (max-width: 480px) {
+  .wann .marke-neu { display: inline-block; margin: 0 0 0 6px; }
+}

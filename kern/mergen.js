@@ -20,6 +20,9 @@
 export function mergen(bestand, zeilen, heute) {
   const index = new Map(bestand.map((e) => [e.id, { ...e }]));
   let neu = 0, geaendert = 0, unveraendert = 0;
+  // IDs für die Anzeige „Neu seit …“. Kommt zu einem Eintrag nur die Hausaufgabe dazu, zählt er
+  // als geändert, steht aber in hausaufgabeNeuIds statt in geaenderteIds.
+  const neueIds = [], geaenderteIds = [], hausaufgabeNeuIds = [];
   for (const z of zeilen) {
     const thema = z.thema || "";
     const hausaufgabe = z.hausaufgabe || "";
@@ -33,11 +36,13 @@ export function mergen(bestand, zeilen, heute) {
         ...(istEigen(z) && bisGueltig(z.datum, z.bis) ? { bis: z.bis } : {}),
       });
       neu++;
+      neueIds.push(z.id);
       continue;
     }
     const neuesThema = thema && thema !== alt.thema ? thema : alt.thema;
     const neueHa = hausaufgabe && hausaufgabe !== alt.hausaufgabe ? hausaufgabe : alt.hausaufgabe;
     if (neuesThema !== alt.thema || neueHa !== alt.hausaufgabe) {
+      (!alt.hausaufgabe && neueHa ? hausaufgabeNeuIds : geaenderteIds).push(z.id);
       alt.thema = neuesThema;
       alt.hausaufgabe = neueHa;
       alt.geaendert = heute;
@@ -46,7 +51,7 @@ export function mergen(bestand, zeilen, heute) {
       unveraendert++;
     }
   }
-  return { eintraege: [...index.values()], neu, geaendert, unveraendert };
+  return { eintraege: [...index.values()], neu, geaendert, unveraendert, neueIds, geaenderteIds, hausaufgabeNeuIds };
 }
 
 // ---------------------------------------------------------------------------
